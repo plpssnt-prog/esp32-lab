@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ESP32 Lab</title>
+<meta name="description" content="Progetti ESP32 in MicroPython dal più facile al più complesso: carica e comanda la scheda dal telefono.">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/"><img src="icons/icon.svg" alt="" width="28" height="28"> ESP32 Lab</a>
+  <button id="connBtn" class="conn">Collega scheda</button>
+</header>
+<nav class="tabs">
+  <a href="#/" data-s="progetti">Progetti</a>
+  <a href="#/scheda" data-s="scheda">Scheda</a>
+  <a href="#/componenti" data-s="componenti">Componenti</a>
+  <a href="#/guida" data-s="guida">Guida</a>
+</nav>
+<main id="main"></main>
+<dialog id="dlg"></dialog>
+<div id="toasts"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
