@@ -1,6 +1,7 @@
 import { PROJECTS, LEVELS, PARTS, PINMAP, BOARD } from './projects.js';
 import { Conn, support } from './conn.js';
 import { buildPanel, h } from './widgets.js';
+import { wiringSVG } from './diagram.js';
 
 const conn = new Conn();
 const main = document.getElementById('main');
@@ -97,6 +98,7 @@ function homePage() {
       h('p', {}, `${PROJECTS.length} progetti in MicroPython, dal LED che lampeggia alla macchinina con telecamera. Scegli, collega i fili, carica dal telefono e usa il pannello di controllo.`),
       h('div', { class: 'progress' }, h('div', { style: `width:${nDone * 100 / PROJECTS.length}%` })),
       h('small', {}, `${nDone} di ${PROJECTS.length} completati`),
+      h('div', { class: 'btn-row' }, h('a', { class: 'btn ghost small', href: 'pdf/ESP32-Lab-manuale.pdf', download: 'ESP32-Lab-manuale.pdf' }, '📄 Manuale PDF con tutti i progetti')),
     ),
     store.get('setupDone', false) ? null : h('section', { class: 'card setup' },
       h('h2', {}, 'Si comincia da qui'),
@@ -218,6 +220,10 @@ async function projectPage(id) {
     h('h1', {}, h('span', { class: 'pnum inline' }, String(p.n)), ' ', p.title),
     h('div', { class: 'tags' }, h('span', { class: 'tag' }, 'Livello ' + p.level), tags(p)),
     h('p', { class: 'lead' }, p.summary),
+    h('div', { class: 'btn-row' },
+      h('a', { class: 'btn ghost small', href: 'pdf/' + pdfName(p), download: pdfName(p) }, '📄 Scarica PDF'),
+      h('a', { class: 'btn ghost small', href: '#/stampa/' + p.id }, 'Versione da stampare'),
+    ),
     h('section', { class: 'card' },
       h('h2', {}, 'Cosa impari'),
       h('ul', {}, p.learn.map((x) => h('li', {}, x))),
@@ -231,6 +237,7 @@ async function projectPage(id) {
     ),
     h('section', { class: 'card' },
       h('h2', {}, 'Collegamenti'),
+      p.wiring.length ? svgBox(p) : null,
       p.wiring.length ? h('div', { class: 'wiring' }, p.wiring.map(([from, to, color]) =>
         h('div', { class: 'wire' },
           h('span', { class: 'wfrom' }, from),
@@ -491,16 +498,107 @@ function guidePage() {
   );
 }
 
+
+// ---------------------------------------------------------------- disegni e stampa
+const pdfName = (p) => `ESP32-Lab-${String(p.n).padStart(2, '0')}-${p.id}.pdf`;
+
+function svgBox(p) {
+  const d = h('div', { class: 'diagram' });
+  d.innerHTML = wiringSVG(p);
+  return d;
+}
+
+const WTYPE = {
+  toggle: 'interruttore', slider: 'cursore', button: 'pulsante', buttons: 'pulsanti', color: 'scelta colore',
+  text: 'campo di testo', value: 'valore', led: 'spia', chart: 'grafico', pad: 'posizione', joystick: 'joystick',
+  piano: 'pianoforte', matrix: 'disegno 8×8', radar: 'radar', web: 'link alla pagina della scheda',
+};
+
+async function printProject(p, withBreak) {
+  const code = await fetch('board/projects/' + p.file).then((r) => r.text()).catch(() => '');
+  const lv = LEVELS.find((l) => l.n === p.level);
+  return h('article', { class: 'pp' + (withBreak ? ' brk' : '') },
+    h('div', { class: 'pp-head' },
+      h('span', { class: 'pnum' }, String(p.n)),
+      h('div', {}, h('h1', {}, p.title), h('div', { class: 'pp-meta' }, `Livello ${p.level} · ${lv ? lv.name : ''} · ⏱ ${p.time}` + (p.wifi ? ' · Wi-Fi' : '') + (p.cam ? ' · fotocamera' : '') + (usesBuy(p) ? ' · componenti da comprare' : ''))),
+    ),
+    h('p', { class: 'lead' }, p.summary),
+    h('div', { class: 'pp-cols' },
+      h('div', {}, h('h2', {}, 'Cosa impari'), h('ul', {}, p.learn.map((x) => h('li', {}, x)))),
+      h('div', {}, h('h2', {}, 'Componenti'), h('ul', {}, p.parts.map((k) => h('li', {}, PARTS[k].name, ' ', h('span', { class: 'src src-' + PARTS[k].src }, PARTS[k].src === 'kit' ? 'kit Elegoo' : PARTS[k].src))))),
+    ),
+    h('h2', {}, 'Collegamenti'),
+    p.wiring.length ? svgBox(p) : h('p', {}, 'Nessun collegamento: basta la scheda.'),
+    p.wiring.length ? h('table', { class: 'pins' }, h('tr', {}, h('th', {}, 'Componente / piedino'), h('th', {}, 'Va a')),
+      p.wiring.map(([f, t, c]) => h('tr', {}, h('td', {}, h('span', { class: 'sw', style: `background:${c}` }), f), h('td', {}, h('b', {}, t))))) : null,
+    p.notes.length ? h('div', { class: 'callout' }, p.notes.map((n) => h('p', {}, '⚠ ' + n))) : null,
+    h('h2', {}, 'Come si usa'),
+    h('ol', {},
+      h('li', {}, 'Fai i collegamenti con la scheda spenta e ricontrollali.'),
+      h('li', {}, 'Apri ESP32 Lab, collega la scheda (Bluetooth o USB) e premi «Carica ed esegui» nella pagina del progetto.'),
+      p.wifi ? h('li', {}, 'Il progetto usa il Wi-Fi: impostalo prima nella pagina Scheda; poi usa «Apri la pagina della scheda».') : null,
+      h('li', {}, 'Usa il pannello di controllo: ', p.panel.map((w) => (w.label || WTYPE[w.type]) + ' (' + WTYPE[w.type] + ')').join(', '), '.'),
+    ),
+    h('h2', { class: 'brk-before' }, 'Codice MicroPython (' + p.file + ')'),
+    h('pre', { class: 'pp-code' }, code),
+  );
+}
+
+async function printPage(id) {
+  document.body.classList.add('print');
+  const all = id === 'tutti';
+  const list = all ? PROJECTS : [byId[id]].filter(Boolean);
+  const bar = h('div', { class: 'noprint btn-row' },
+    h('a', { class: 'btn ghost small', href: all ? '#/' : '#/p/' + id }, '← Indietro'),
+    h('button', { class: 'btn small', onclick: () => window.print() }, 'Stampa / salva PDF'));
+  main.append(bar);
+  if (all) {
+    main.append(
+      h('section', { class: 'pp cover' },
+        h('h1', {}, 'ESP32 Lab'),
+        h('p', { class: 'lead' }, `${PROJECTS.length} progetti in MicroPython per ${BOARD.name} con Freenove Breakout Board, dal LED che lampeggia alla macchinina con telecamera.`),
+        h('h2', {}, 'Indice'),
+        LEVELS.flatMap((lv) => [h('h3', {}, `Livello ${lv.n} · ${lv.name}`),
+          h('ol', { start: PROJECTS.find((p) => p.level === lv.n).n }, PROJECTS.filter((p) => p.level === lv.n).map((p) => h('li', {}, p.title + (usesBuy(p) ? ' 🛒' : ''))))]),
+      ),
+      h('section', { class: 'pp brk' },
+        h('h1', {}, 'Prima di iniziare'),
+        h('ol', {},
+          h('li', {}, 'Monta la scheda sulla Freenove Breakout Board rispettando il verso indicato sulla breakout.'),
+          h('li', {}, 'Dalla pagina Scheda di ESP32 Lab installa MicroPython (una volta, da Chrome su PC) e poi il runtime via USB.'),
+          h('li', {}, 'Imposta il Wi-Fi (solo reti a 2,4 GHz) se vuoi fare i progetti web e fotocamera.'),
+        ),
+        h('h2', {}, 'Regole d’oro'),
+        h('ul', {},
+          h('li', {}, 'L’ESP32 lavora a 3,3 V: nessun segnale a 5 V sui pin (partitore 1 kΩ / 2 kΩ per l’ECHO dell’HC-SR04).'),
+          h('li', {}, 'Servo e motori si alimentano dal 5 V della breakout con alimentatore esterno, dal modulo di alimentazione del kit o dalle batterie: mai dai pin.'),
+          h('li', {}, 'GND sempre in comune tra tutte le alimentazioni.'),
+          h('li', {}, 'Non usare i pin della fotocamera (GPIO4–18), della PSRAM (35–37) e della USB (19–20).'),
+        ),
+        h('h2', {}, 'Mappa dei pin'),
+        h('table', { class: 'pins' }, PINMAP.map(([g, use, st]) => h('tr', { class: /NON/.test(st) ? 'no' : '' }, h('th', {}, g), h('td', {}, use), h('td', {}, st)))),
+      ),
+    );
+  }
+  for (let i = 0; i < list.length; i++) main.append(await printProject(list[i], all || i > 0));
+  document.title = all ? 'ESP32 Lab – manuale' : `ESP32 Lab – ${list[0].n}. ${list[0].title}`;
+  document.body.dataset.ready = '1';
+}
+
 // ---------------------------------------------------------------- routing
 function route() {
   if (page.panel) page.panel.destroy();
   if (page.cleanup) page.cleanup();
   page = { panel: null, onMsg: null, onConsole: null, onInfo: null, cleanup: null };
   main.innerHTML = '';
+  document.body.classList.remove('print');
+  delete document.body.dataset.ready;
+  document.title = 'ESP32 Lab';
   const hash = location.hash.slice(1) || '/';
   const sect = hash.startsWith('/p/') ? 'progetti' : hash.slice(1) || 'progetti';
   document.querySelectorAll('nav.tabs a').forEach((a) => a.classList.toggle('on', a.dataset.s === sect));
-  if (hash.startsWith('/p/')) projectPage(decodeURIComponent(hash.slice(3)));
+  if (hash.startsWith('/stampa/')) printPage(decodeURIComponent(hash.slice(8)));
+  else if (hash.startsWith('/p/')) projectPage(decodeURIComponent(hash.slice(3)));
   else if (hash === '/scheda') boardPage();
   else if (hash === '/componenti') partsPage();
   else if (hash === '/guida') guidePage();

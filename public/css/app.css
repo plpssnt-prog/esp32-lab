@@ -117,3 +117,37 @@ dialog::backdrop{background:#0f172a55}
 .toast{background:#111827;color:#fff;border-radius:10px;padding:10px 14px;font-size:.92rem;box-shadow:0 6px 20px #0003;animation:in .2s}
 .toast.err{background:var(--err)}.toast.ok{background:var(--ok)}
 @keyframes in{from{opacity:0;transform:translateY(8px)}}
+/* disegni dei collegamenti */
+.diagram{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;margin:0 0 12px;overflow-x:auto}
+.diagram svg{display:block;min-width:560px}
+/* vista di stampa / PDF */
+body.print{background:#fff;padding-bottom:0}
+body.print .top,body.print .tabs{display:none}
+body.print main{max-width:900px}
+.pp{color:#111827}
+.pp h1{margin:0}
+.pp h2{font-size:1.05rem;margin:16px 0 6px;color:#1e3a8a}
+.pp-head{display:flex;gap:12px;align-items:center;border-bottom:3px solid var(--acc);padding-bottom:8px;margin-bottom:6px}
+.pp-head .pnum{width:44px;height:44px;font-size:1.2rem}
+.pp-meta{color:var(--muted);font-size:.9rem}
+.pp-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pp-cols ul{margin:0;padding-left:1.1rem}
+.pp .diagram svg{min-width:0}
+.pp .pins td,.pp .pins th{font-size:.85rem}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.pp-code{font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-word}
+.cover{padding-top:40px}
+.cover h1{font-size:2.4rem;color:var(--acc)}
+.cover h3{margin:14px 0 2px}
+.cover ol{margin:0}
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  .noprint{display:none!important}
+  body{font-size:12.5px}
+  .brk{break-before:page}
+  .brk-before{break-before:page}
+  .diagram,.callout,tr{break-inside:avoid}
+  .diagram{border:0;padding:0}
+  .src{border:1px solid #ddd}
+  a{color:inherit;text-decoration:none}
+}

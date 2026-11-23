@@ -75,7 +75,7 @@ export const LEVELS = [
 
 const GND = (c = 'GND') => [c, 'GND', '#111827'];
 const V33 = (c) => [c, '3V3', '#dc2626'];
-const V5 = (c) => [c, '5V modulo alim.', '#ea580c'];
+const V5 = (c) => [c, '5V', '#ea580c'];
 
 export const PROJECTS = [
   // ---------------- LIVELLO 1 ----------------
@@ -459,6 +459,7 @@ export const PROJECTS = [
       ['Servo arancione', 'GPIO42', '#ca8a04'], ['Servo rosso', '5V del L298N', '#ea580c'], GND('Servo marrone'),
       ['HC-SR04 TRIG', 'GPIO41', '#2563eb'], ['HC-SR04 ECHO → 1 kΩ', 'GPIO40', '#ca8a04'], ['GPIO40 → 2 kΩ', 'GND', '#111827'],
       ['HC-SR04 VCC', '5V del L298N', '#ea580c'], GND('HC-SR04 GND'),
+      GND('L298N GND (e batterie −)'),
     ],
     notes: ['Parte dalla «Macchinina telecomandata» già montata.', 'Il 5V del L298N è disponibile se il ponticello 5V-EN è inserito e le batterie sono almeno 7 V; con 4×AA usa il modulo di alimentazione.'],
     panel: [

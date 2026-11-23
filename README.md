@@ -43,6 +43,7 @@ public/
   board/projects/                codice MicroPython dei progetti
   fw/                            firmware MicroPython + fotocamera
   vendor/                        esptool-js 0.7.1, web-serial-polyfill 1.0.15
+  pdf/                           PDF dei progetti e manuale
   sw.js, manifest.webmanifest    PWA offline
 wrangler.jsonc                   Worker Cloudflare (solo asset statici)
 ```
@@ -53,6 +54,16 @@ wrangler.jsonc                   Worker Cloudflare (solo asset statici)
 2. Aggiungi la voce in `public/js/projects.js` (`PROJECTS`): livello, componenti, collegamenti, note, widget del pannello.
 3. Widget disponibili: `toggle`, `slider`, `button`, `buttons`, `color`, `text`, `value`, `led`, `chart`, `pad`, `joystick`, `piano`, `matrix`, `radar`, `web`.
 4. Se aggiungi file, aggiornali nell'elenco `SHELL` di `sw.js` e incrementa `VERSION`.
+
+## Disegni e PDF
+
+- Ogni progetto ha uno schema dei collegamenti generato da `public/js/diagram.js` a partire dai dati `wiring` (scheda sulla Freenove Breakout Board FNK0091 → componenti).
+- Vista di stampa: `#/stampa/<id>` (singolo progetto) e `#/stampa/tutti` (manuale).
+- PDF pronti in `public/pdf/` (uno per progetto + `ESP32-Lab-manuale.pdf`). Dopo aver modificato i progetti, rigenerali:
+  ```
+  cd public && python3 -m http.server 8765 &
+  python3 tools/make_pdfs.py
+  ```
 
 ## Pubblicazione
 
