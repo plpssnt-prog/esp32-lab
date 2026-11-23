@@ -221,7 +221,7 @@ async function projectPage(id) {
     h('div', { class: 'tags' }, h('span', { class: 'tag' }, 'Livello ' + p.level), tags(p)),
     h('p', { class: 'lead' }, p.summary),
     h('div', { class: 'btn-row' },
-      h('a', { class: 'btn ghost small', href: 'pdf/' + pdfName(p), download: pdfName(p) }, '📄 Scarica PDF'),
+      h('a', { class: 'btn ghost small', href: 'pdf/' + pdfName(p), download: pdfName(p) }, '📄 Guida PDF con disegni'),
       h('a', { class: 'btn ghost small', href: '#/stampa/' + p.id }, 'Versione da stampare'),
     ),
     h('section', { class: 'card' },
