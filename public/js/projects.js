@@ -30,6 +30,7 @@ export const PINMAP = [
 
 export const PARTS = {
   board: { name: 'Scheda Freenove ESP32-S3 WROOM CAM', src: 'acquisto', note: 'Con fotocamera, USB-C nativa, 8 MB flash + 8 MB PSRAM' },
+  breakout: { name: 'Freenove Breakout Board FNK0091', src: 'consigliato', note: 'Scheda di espansione: morsetti per ogni pin, uscite 5 V e 3,3 V, LED di stato. La breadboard resta libera per i componenti' },
   cable: { name: 'Cavo USB-C dati', src: 'acquisto', note: 'Deve trasferire dati, non solo ricaricare' },
   breadboard: { name: 'Breadboard', src: 'kit' },
   wires: { name: 'Cavetti jumper', src: 'kit' },

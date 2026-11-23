@@ -1,5 +1,5 @@
 // Service worker: l'app funziona anche offline (il firmware si scarica solo quando serve)
-const VERSION = 'esp32lab-v1';
+const VERSION = 'esp32lab-v2';
 const SHELL = [
   './',
   'board/main.py',
