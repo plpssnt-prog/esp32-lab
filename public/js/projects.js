@@ -9,16 +9,16 @@ export const BOARD = {
 
 // Mappa dei pin usati da tutti i progetti (cosi' i collegamenti restano coerenti)
 export const PINMAP = [
-  ['GPIO2', 'LED blu integrato', 'integrato'],
+  ['GPIO2', 'LED blu integrato · tensione batteria (partitore 100k/10k)', 'integrato'],
   ['GPIO48', 'LED RGB integrato (WS2812)', 'integrato'],
   ['GPIO0', 'Pulsante BOOT', 'integrato'],
-  ['GPIO1', 'Analogico A: potenziometro, fotoresistenza, joystick X · motore destro IN4', 'libero'],
-  ['GPIO3', 'Analogico B: joystick Y', 'libero'],
+  ['GPIO1', 'Analogico A: potenziometro, fotoresistenza, joystick X, umidità terra A · motore destro IN4', 'libero'],
+  ['GPIO3', 'Analogico B: joystick Y, umidità terra B', 'libero'],
   ['GPIO14', 'Buzzer passivo · CLK matrice · motore destro IN3', 'libero'],
-  ['GPIO21', 'LED esterno · DIN matrice · anello LED · I2C SDA · motore sinistro IN1', 'libero'],
-  ['GPIO47', 'Pulsante / SW joystick · CS matrice · I2C SCL · motore sinistro IN2', 'libero'],
+  ['GPIO21', 'LED esterno · DIN matrice · anello LED · I2C SDA · motore sinistro IN1 · pompa A', 'libero'],
+  ['GPIO47', 'Pulsante / SW joystick · CS matrice · I2C SCL · motore sinistro IN2 · pompa B', 'libero'],
   ['GPIO42', 'Servo (segnale) · sensore di linea destro', 'libero'],
-  ['GPIO41', 'HC-SR04 TRIG · PIR · sensore di linea sinistro', 'libero'],
+  ['GPIO41', 'HC-SR04 TRIG · PIR · sensore di linea sinistro · galleggiante', 'libero'],
   ['GPIO40', 'HC-SR04 ECHO (con partitore 1k/2k)', 'libero (slot SD non usato)'],
   ['GPIO39', 'DHT11 (dati)', 'libero (slot SD non usato)'],
   ['GPIO38', 'Ricevitore IR', 'libero (slot SD non usato)'],
@@ -62,6 +62,18 @@ export const PARTS = {
   ring: { name: 'Anello LED WS2812 (8–16 LED)', src: 'consigliato', note: 'LED a colori indirizzabili uno per uno' },
   pir: { name: 'Sensore di movimento PIR HC-SR501', src: 'consigliato', note: 'Rileva persone fino a ~5 m' },
   tcrt: { name: 'Sensori di linea TCRT5000 (2 moduli)', src: 'consigliato', note: 'Modulo con uscita digitale DO e trimmer' },
+  r100k: { name: 'Resistenza 100 kΩ', src: 'kit' },
+  diode: { name: 'Diodo 1N4007 (uno per pompa)', src: 'kit', note: 'Protegge il MOSFET quando la pompa si spegne' },
+  soil: { name: 'Sensore di umidità del terreno capacitivo v1.2 (2 pezzi)', src: 'acquisto', note: 'Quello capacitivo, non quello con le due punte che si corrodono' },
+  pump12: { name: 'Pompa a membrana 12 V autoadescante (2 pezzi)', src: 'acquisto', note: 'Tipo R385 o simile, circa 1–2 L/min' },
+  mosfet: { name: 'Modulo MOSFET D4184 / AOD4184 (2 pezzi)', src: 'acquisto', note: 'Si comanda a 3,3 V. Non usare l’IRF520: a 3,3 V non si accende bene' },
+  float: { name: 'Interruttore a galleggiante', src: 'acquisto', note: 'Contatto che si chiude quando c’è acqua' },
+  solar: { name: 'Pannello solare 12 V da 30 W', src: 'acquisto' },
+  charger: { name: 'Regolatore di carica 12 V PWM 10 A con uscita LOAD', src: 'acquisto', note: 'Stacca il carico quando la batteria è scarica' },
+  battery: { name: 'Batteria 12 V LiFePO4 12 Ah (o AGM 12 Ah)', src: 'acquisto', note: 'Imposta il tipo di batteria sul regolatore' },
+  buck: { name: 'Step-down 12 V → 5 V (LM2596 o modulo con uscita USB)', src: 'acquisto' },
+  drip: { name: 'Kit microirrigazione + tanica 20–30 L', src: 'acquisto', note: 'Tubo 4/6 mm, raccordi a T, gocciolatori regolabili, tappi' },
+  box: { name: 'Scatola stagna IP65, pressacavi, morsetti e fusibile 3 A', src: 'acquisto' },
 };
 
 export const LEVELS = [
@@ -71,6 +83,7 @@ export const LEVELS = [
   { n: 4, name: 'Wi-Fi', desc: 'La scheda crea una sua pagina web e va su Internet.' },
   { n: 5, name: 'Fotocamera', desc: 'Foto e video in diretta sul telefono.' },
   { n: 6, name: 'Robot', desc: 'La macchinina: dal telecomando alla guida con la telecamera.' },
+  { n: 7, name: 'Impianti per la casa', desc: 'Progetti completi da lasciare montati: sensori, pompe, Wi-Fi, fotocamera e pannello solare.' },
 ];
 
 const GND = (c = 'GND') => [c, 'GND', '#111827'];
@@ -496,6 +509,46 @@ export const PROJECTS = [
       { type: 'toggle', id: 'inverti', label: 'Inverti sensori', value: false },
       { type: 'led', key: 'sx', label: 'Sensore sinistro sul nero' },
       { type: 'led', key: 'dx', label: 'Sensore destro sul nero' },
+    ],
+  },
+  // ---------------- LIVELLO 7 ----------------
+  {
+    id: 'irrigazione', level: 7, title: 'Irrigazione del terrazzo a energia solare', time: '3–4 ore', file: 'x_irrigazione.py', wifi: true, cam: true, buy: true,
+    summary: 'Due zone di piante (più acqua e meno acqua) annaffiate da due pompe, con sensori di umidità, serbatoio, pannello solare e fotocamera. Si regola tutto da una pagina Wi-Fi.',
+    learn: ['Comandare carichi a 12 V con un MOSFET', 'Sensori capacitivi e taratura', 'Programmi a orario con l’ora da Internet', 'Salvare le impostazioni nella memoria della scheda', 'Alimentazione a pannello solare'],
+    parts: ['board', 'breakout', 'soil', 'pump12', 'mosfet', 'diode', 'float', 'solar', 'charger', 'battery', 'buck', 'drip', 'box', 'r100k', 'r10k', 'dht11', 'wires'],
+    wiring: [
+      ['Umidità A AOUT', 'GPIO1', '#0891b2'], ['Umidità B AOUT', 'GPIO3', '#0e7490'], V33('Umidità A e B VCC'), GND('Umidità A e B GND'),
+      ['MOSFET pompa A SIG', 'GPIO21', '#2563eb'], ['MOSFET pompa B SIG', 'GPIO47', '#16a34a'], GND('MOSFET GND (lato segnale)'),
+      ['Galleggiante filo 1', 'GPIO41', '#9333ea'], GND('Galleggiante filo 2'),
+      ['Batteria + → 100 kΩ', 'GPIO2', '#ca8a04'], ['GPIO2 → 10 kΩ', 'GND', '#111827'],
+      ['DHT11 S (facoltativo)', 'GPIO39', '#16a34a'], V33('DHT11 +'), GND('DHT11 −'),
+      ['Step-down OUT+ (5 V)', '5V', '#ea580c'], GND('Step-down OUT−'),
+      ['Step-down IN e MOSFET VIN', 'LOAD regolatore (12 V, con fusibile)', '#dc2626'],
+      ['MOSFET OUT+ / OUT−', 'Pompa + / − (con diodo 1N4007)', '#6b7280'],
+      ['Regolatore PV / BATT', 'Pannello solare / batteria 12 V', '#6b7280'],
+    ],
+    notes: [
+      'Collega prima la batteria al regolatore e solo dopo il pannello solare; per staccare fai il contrario.',
+      'Tutti i GND sono in comune: regolatore, step-down, MOSFET e scheda. Fusibile da 3 A sul + dell’uscita LOAD.',
+      'Diodo 1N4007 sui morsetti di ogni pompa, con la riga verso il +.',
+      'Tara i sensori dalla pagina: «Sensore all’aria» con il sensore asciutto e pulito, poi «Sensore in acqua» immerso fino alla riga.',
+      'Senza galleggiante montato la scheda vede il serbatoio vuoto: disattivalo nella pagina finché non lo monti.',
+      'Se una pompa dà un colpo all’accensione della scheda, aggiungi una resistenza da 10 kΩ tra SIG e GND del modulo MOSFET.',
+      'Il progetto si riavvia da solo dopo un’interruzione di corrente e ricorda le impostazioni.',
+    ],
+    panel: [
+      { type: 'web', label: 'Pagina irrigazione (regolazioni e fotocamera)' },
+      { type: 'value', key: 'umid0', label: 'Umidità zona A', unit: '%', big: true },
+      { type: 'value', key: 'umid1', label: 'Umidità zona B', unit: '%', big: true },
+      { type: 'led', key: 'acqua', label: 'Acqua nel serbatoio' },
+      { type: 'value', key: 'batt', label: 'Batteria', unit: 'V' },
+      { type: 'led', key: 'pompa0', label: 'Pompa A accesa' },
+      { type: 'led', key: 'pompa1', label: 'Pompa B accesa' },
+      { type: 'button', id: 'annaffiaA', label: 'Annaffia zona A', v: 1 },
+      { type: 'button', id: 'annaffiaB', label: 'Annaffia zona B', v: 1 },
+      { type: 'toggle', id: 'pausa', label: 'Sospendi i programmi (pioggia)', value: false },
+      { type: 'button', id: 'ferma', label: 'Ferma tutto', v: 1, danger: true },
     ],
   },
 ];

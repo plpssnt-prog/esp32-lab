@@ -1,6 +1,6 @@
 # ESP32 Lab
 
-PWA (tema chiaro, in italiano) con **30 progetti MicroPython** per ESP32-S3, dal LED che lampeggia alla macchinina con telecamera. Dal telefono scegli il progetto, vedi componenti e collegamenti, carichi il codice sulla scheda (Bluetooth o USB) e lo comandi dal pannello di controllo.
+PWA (tema chiaro, in italiano) con **31 progetti MicroPython** per ESP32-S3, dal LED che lampeggia alla macchinina con telecamera e all’irrigazione del terrazzo a energia solare. Dal telefono scegli il progetto, vedi componenti e collegamenti, carichi il codice sulla scheda (Bluetooth o USB) e lo comandi dal pannello di controllo.
 
 Scheda di riferimento: **Freenove ESP32-S3 WROOM CAM** (N8R8, fotocamera OV2640/OV3660), con i componenti del kit Elegoo UNO R3 Super Starter più alcuni componenti consigliati.
 

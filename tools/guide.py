@@ -123,7 +123,8 @@ NICE = {'LED': 'LED', 'Pulsante': 'Pulsante', 'Buzzer': 'Buzzer passivo', 'Poten
         'Joystick': 'Joystick', 'Ricevitore': 'Ricevitore IR', 'Servo': 'Servo SG90', 'L293D': 'Driver L293D',
         'ULN2003': 'ULN2003 + motore 28BYJ-48', 'MAX7219': 'Matrice 8×8 MAX7219', 'OLED': 'Display OLED',
         'MPU-6050': 'MPU-6050', 'Anello': 'Anello LED WS2812', 'PIR': 'Sensore PIR', 'L298N': 'Driver motori L298N',
-        'Sensore': 'Sensori di linea TCRT5000', 'Partitore': 'Partitore 1k / 2k', 'Resistenza': 'Resistenza 10 kΩ'}
+        'Sensore': 'Sensori di linea TCRT5000', 'Partitore': 'Partitore (resistenze)', 'Resistenza': 'Resistenza 10 kΩ',
+        'Umidità': 'Sensori di umidità A e B', 'MOSFET': 'Moduli MOSFET D4184', 'Batteria': 'Batteria 12 V (via 100 kΩ)'}
 ALT = {'#2563eb': '#16a34a', '#9333ea': '#0891b2'}
 
 
@@ -509,7 +510,7 @@ def passi_collegamento(p):
         for pn in cp['pins']:
             segm.append(f"{pn['pin']} → {pn['to']}")
         out.append(('Collega: ' + cp['name'], ' · '.join(segm)))
-    if any(pn['term'] == '5V' for cp in comps for pn in cp['pins']):
+    if any(pn['term'] == '5V' for cp in comps for pn in cp['pins']) and 'buck' not in p['parts']:
         out.append(('Alimentazione a 5 V', 'Collega un alimentatore esterno alla breakout (5 V fino a 3 A) oppure prendi il 5 V dal modulo di alimentazione del kit. In ogni caso il GND deve essere comune.'))
     if comps:
         out.append(('Ricontrolla', 'Confronta ogni filo con la tabella «Tutti i collegamenti» qui sotto prima di dare corrente.'))
@@ -592,7 +593,7 @@ def copertina(D):
     for lv in D['LEVELS']:
         text(40, y, f'Livello {lv["n"]} · {lv["name"]}', 10.5, 'SB', ACC); y -= 15
         for p in [q for q in D['P'] if q['level'] == lv['n']]:
-            buy = ' (componenti da comprare)' if any(k in p['parts'] for k in ('oled', 'mpu6050', 'ring', 'pir', 'tcrt', 'chassis', 'l298n')) else ''
+            buy = ' (componenti da comprare)' if any(k in p['parts'] for k in ('oled', 'mpu6050', 'ring', 'pir', 'tcrt', 'chassis', 'l298n', 'soil', 'pump12', 'mosfet', 'float', 'solar')) else ''
             text(52, y, f'{p["n"]:>2}.  {p["title"]}{buy}', 9.5); y -= 13
         y -= 5
     c.showPage()
