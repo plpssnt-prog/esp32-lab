@@ -1,5 +1,5 @@
 // Service worker: l'app funziona anche offline (il firmware si scarica solo quando serve)
-const VERSION = 'esp32lab-v4';
+const VERSION = 'esp32lab-v5';
 const SHELL = [
   './',
   'board/main.py',
@@ -32,6 +32,7 @@ const SHELL = [
   'board/projects/x_mpu6050.py',
   'board/projects/x_oled.py',
   'board/projects/x_pir_cam.py',
+  'board/projects/x_irrigazione.py',
   'board/projects/x_ring.py',
   'css/app.css',
   'icons/icon-192.png',

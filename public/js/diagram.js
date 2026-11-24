@@ -11,8 +11,8 @@ const NICE = {
   Fotoresistenza: 'Fotoresistenza', DHT11: 'DHT11', 'HC-SR04': 'HC-SR04 ultrasuoni', Joystick: 'Joystick',
   Ricevitore: 'Ricevitore IR', Servo: 'Servo SG90', L293D: 'Driver L293D', ULN2003: 'Driver ULN2003 + 28BYJ-48',
   MAX7219: 'Matrice 8×8 MAX7219', OLED: 'Display OLED', 'MPU-6050': 'MPU-6050', Anello: 'Anello LED WS2812',
-  PIR: 'Sensore PIR', L298N: 'Driver motori L298N', Sensore: 'Sensori di linea TCRT5000', Partitore: 'Partitore 1k / 2k',
-  Resistenza: 'Resistenza 10 kΩ',
+  PIR: 'Sensore PIR', L298N: 'Driver motori L298N', Sensore: 'Sensori di linea TCRT5000', Partitore: 'Partitore (resistenze)',
+  Resistenza: 'Resistenza 10 kΩ', Umidità: 'Sensori umidità A e B', MOSFET: 'Moduli MOSFET D4184', Batteria: 'Batteria 12 V (via 100 kΩ)',
 };
 
 // destinazione sulla breakout? restituisce il nome del morsetto oppure null

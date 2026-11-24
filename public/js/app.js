@@ -20,7 +20,7 @@ function toast(text, kind = '') {
 }
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const done = () => store.get('done', {});
-const usesBuy = (p) => p.parts.some((x) => ['oled', 'mpu6050', 'ring', 'pir', 'tcrt', 'chassis', 'l298n', 'batt', 'powerbank'].includes(x));
+const usesBuy = (p) => p.parts.some((x) => ['oled', 'mpu6050', 'ring', 'pir', 'tcrt', 'chassis', 'l298n', 'batt', 'powerbank', 'soil', 'pump12', 'mosfet', 'float', 'solar'].includes(x));
 
 async function getCode(p) {
   const saved = store.get('code:' + p.id, null);
