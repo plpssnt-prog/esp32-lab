@@ -148,18 +148,30 @@ def batteria():
 
 
 # ---------------------------------------------------------------- fotocamera
+cam_enc = [None]   # convertitore JPEG software, se il sensore non fa JPEG
+
 async def foto():
     global cam, cam_usata
     if Camera is None:
         return None
     if cam is None:
-        cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=FrameSize.VGA, jpeg_quality=85, fb_count=1)
+        try:
+            cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=FrameSize.VGA, jpeg_quality=85, fb_count=1)
+            cam_enc[0] = None
+        except OSError:
+            # sensore senza JPEG (es. GC0308): YUV422 + JPEG software
+            import jpeg
+            cam = Camera(pixel_format=PixelFormat.YUV422, frame_size=FrameSize.VGA, fb_count=1)
+            cam_enc[0] = jpeg.Encoder(width=cam.get_pixel_width(), height=cam.get_pixel_height(),
+                                      pixel_format='YCbYCr', quality=85)
         for _ in range(3):           # i primi scatti servono all'esposizione automatica
             cam.capture()
             await asyncio.sleep_ms(150)
     cam_usata = time.ticks_ms()
     img = cam.capture()
-    return bytes(img) if img else None
+    if not img:
+        return None
+    return cam_enc[0].encode(img) if cam_enc[0] else bytes(img)
 
 
 def spegni_cam():
