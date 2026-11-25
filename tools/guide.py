@@ -14,6 +14,7 @@ from pypdf import PdfReader, PdfWriter
 
 sys.path.insert(0, os.path.dirname(__file__))
 from guide_data import G  # noqa: E402
+import disegni  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUT = os.path.join(ROOT, 'public', 'pdf')
@@ -538,13 +539,26 @@ def guida(p, D, tot, code):
     extra = g.get('perche')
     if extra:
         bottom = 60 + riquadro_h(W - 80, [extra], 'Perché iniziare da qui')
-    disegno(p, y - 10, bottom)
+    disegni.c = c
+    pag = 2
+    livello = f'Livello {p["level"]} · {lv}' + (' · Wi-Fi' if p.get('wifi') else '') + (' · fotocamera' if p.get('cam') else '')
+    if p['id'] in disegni.D and (y - 10 - bottom) < 460:
+        # poco spazio: il disegno va su una pagina intera
+        riquadro(40, y - 6, W - 80, ['Il disegno dei collegamenti è nella pagina seguente, a tutta pagina.'], titolo='Disegno')
+        text(40, 36, livello, 8, 'S', GREY)
+        c.showPage()
+        header(titolo, 'Il disegno dei collegamenti', 2, tot, p['n'])
+        disegni.disegna(p['id'], H - 100, 50)
+        pag = 3
+    elif not disegni.disegna(p['id'], y - 10, bottom):
+        disegno(p, y - 10, bottom)
     if extra:
         riquadro(40, bottom - 12, W - 80, [extra], titolo='Perché iniziare da qui')
-    text(40, 36, f'Livello {p["level"]} · {lv}' + (' · Wi-Fi' if p.get('wifi') else '') + (' · fotocamera' if p.get('cam') else ''), 8, 'S', GREY)
+    if pag == 2:
+        text(40, 36, livello, 8, 'S', GREY)
     c.showPage()
 
-    f = Flusso(titolo, p['n'], 2, tot)
+    f = Flusso(titolo, p['n'], pag, tot)
     prima = g.get('prima', []) + p['notes']
     if prima:
         f.nota(prima, 'Prima di iniziare', WARN_BG, WARN_FG)
@@ -614,8 +628,42 @@ def copertina(D):
     return buf.getvalue()
 
 
+def immagini(D):
+    """PNG dei disegni per la PWA (public/img/disegni/<id>.png)."""
+    global c
+    import shutil, tempfile
+    out = os.path.join(ROOT, 'public', 'img', 'disegni')
+    os.makedirs(out, exist_ok=True)
+    if not shutil.which('pdftoppm'):
+        print('pdftoppm non trovato: immagini non generate')
+        return
+    tmp = tempfile.mkdtemp()
+    for p in D['P']:
+        if p['id'] not in disegni.D:
+            continue
+        pdf = os.path.join(tmp, p['id'] + '.pdf')
+        c = canvas.Canvas(pdf, pagesize=(disegni.FW + 20, disegni.FH + 20))
+        disegni.c = c
+        c.translate(10, 10)
+        disegni.D[p['id']]()
+        c.showPage(); c.save()
+        dest = os.path.join(out, p['id'])
+        subprocess.run(['pdftoppm', '-r', '110', '-png', '-singlefile', pdf, dest], check=True)
+        try:   # ritaglia i margini bianchi
+            from PIL import Image, ImageOps
+            im = Image.open(dest + '.png').convert('RGB')
+            box = ImageOps.invert(im).getbbox()
+            if box:
+                m = 12
+                im.crop((max(0, box[0] - m), max(0, box[1] - m), min(im.width, box[2] + m), min(im.height, box[3] + m))).save(dest + '.png', optimize=True)
+        except ImportError:
+            pass
+    print('immagini:', len(os.listdir(out)))
+
+
 def main():
     D = load()
+    immagini(D)
     os.makedirs(OUT, exist_ok=True)
     for old in os.listdir(OUT):
         if old.endswith('.pdf'): os.remove(os.path.join(OUT, old))

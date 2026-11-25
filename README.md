@@ -59,7 +59,7 @@ wrangler.jsonc                   Worker Cloudflare (solo asset statici)
 
 - Ogni progetto ha uno schema dei collegamenti generato da `public/js/diagram.js` a partire dai dati `wiring` (scheda sulla Freenove Breakout Board FNK0091 → componenti).
 - Vista di stampa: `#/stampa/<id>` (singolo progetto) e `#/stampa/tutti` (manuale).
-- Guide PDF in `public/pdf/` (una per progetto, stile UNO Lab: disegno, cosa serve, passo passo, se non funziona, codice + `ESP32-Lab-manuale.pdf`). Contenuti specifici in `tools/guide_data.py`. Dopo aver modificato i progetti:
+- Guide PDF in `public/pdf/` (una per progetto, stile UNO Lab: disegno, cosa serve, passo passo, se non funziona, codice + `ESP32-Lab-manuale.pdf`). Contenuti specifici in `tools/guide_data.py`, disegni realistici (breakout Freenove + breadboard, stile UNO Lab) in `tools/disegni.py`; le stesse immagini finiscono in `public/img/disegni/` per la PWA (serve `pdftoppm`). Dopo aver modificato i progetti:
   ```
   python3 tools/guide.py
   ```

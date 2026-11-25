@@ -237,7 +237,8 @@ async function projectPage(id) {
     ),
     h('section', { class: 'card' },
       h('h2', {}, 'Collegamenti'),
-      p.wiring.length ? svgBox(p) : null,
+      drawingBox(p),
+      h('p', { class: 'hint' }, 'Tocca il disegno per ingrandirlo. Per chiarezza è uno schema: sulla breakout cerca le etichette dei pin.'),
       p.wiring.length ? h('div', { class: 'wiring' }, p.wiring.map(([from, to, color]) =>
         h('div', { class: 'wire' },
           h('span', { class: 'wfrom' }, from),
@@ -526,6 +527,16 @@ const pdfName = (p) => `ESP32-Lab-${String(p.n).padStart(2, '0')}-${p.id}.pdf`;
 function svgBox(p) {
   const d = h('div', { class: 'diagram' });
   d.innerHTML = wiringSVG(p);
+  return d;
+}
+
+// disegno realistico (stile UNO Lab) se esiste, altrimenti lo schema
+function drawingBox(p) {
+  const d = h('div', { class: 'diagram drawing' });
+  const img = h('img', { src: 'img/disegni/' + p.id + '.png', alt: 'Disegno dei collegamenti: ' + p.title, loading: 'lazy' });
+  img.addEventListener('error', () => { d.classList.remove('drawing'); d.innerHTML = wiringSVG(p); });
+  img.addEventListener('click', () => window.open(img.src, '_blank'));
+  d.append(img);
   return d;
 }
 
