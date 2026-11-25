@@ -31,6 +31,7 @@ export const PINMAP = [
 export const PARTS = {
   board: { name: 'Scheda Freenove ESP32-S3 WROOM CAM', src: 'acquisto', note: 'Con fotocamera, USB-C nativa, 8 MB flash + 8 MB PSRAM' },
   breakout: { name: 'Freenove Breakout Board FNK0091', src: 'consigliato', note: 'Scheda di espansione: morsetti per ogni pin, uscite 5 V e 3,3 V (con alimentatore 7–12 V nel jack), LED di stato. La breadboard resta libera per i componenti' },
+  ff: { name: 'Cavetti jumper Dupont femmina-femmina e maschio-femmina (20 cm)', src: 'acquisto', note: 'I piedini della breakout e dei moduli (servo, sensori, display) sono maschi: servono cavetti con le femmine. Il kit Elegoo ha soprattutto maschio-maschio' },
   cable: { name: 'Cavo USB-C dati', src: 'acquisto', note: 'Deve trasferire dati, non solo ricaricare' },
   breadboard: { name: 'Breadboard', src: 'kit' },
   wires: { name: 'Cavetti jumper', src: 'kit' },

@@ -469,7 +469,7 @@ function partsPage() {
   main.append(
     h('h1', {}, 'Componenti'),
     h('p', { class: 'lead' }, 'Spunta quello che hai: resta salvato su questo telefono.'),
-    group('Da acquistare per iniziare', 'Cerca «Freenove ESP32-S3 WROOM CAM» (FNK0085, versione 8 MB con fotocamera). La breakout board rende molto più comodi i collegamenti.', ['board', 'breakout', 'cable']),
+    group('Da acquistare per iniziare', 'Cerca «Freenove ESP32-S3 WROOM CAM» (FNK0085, versione 8 MB con fotocamera). La breakout board rende molto più comodi i collegamenti.', ['board', 'breakout', 'ff', 'cable']),
     group('Consigliati (pochi euro, progetti in più)', 'Display, accelerometro, anello LED, sensore di movimento e sensori di linea.', keys.filter((k) => PARTS[k].src === 'consigliato' && k !== 'breakout')),
     group('Per il robot', 'Molti kit «2WD smart car» includono telaio, motori, ruote, portabatterie e spesso anche il L298N.', ['chassis', 'l298n', 'batt', 'powerbank']),
     group('Dal kit Elegoo che hai già', 'Controlla nella scatola: i kit Elegoo cambiano un po’ tra le versioni.', keys.filter((k) => PARTS[k].src === 'kit')),
