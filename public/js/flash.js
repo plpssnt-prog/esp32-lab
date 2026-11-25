@@ -8,6 +8,7 @@ export function canFlash() {
 export async function flashFirmware({ url, eraseAll = true, log, progress, webusb = false }) {
   if (!canFlash()) throw new Error('Questo browser non può collegarsi alla scheda via USB: usa Chrome.');
   let port;
+  if ('usb' in navigator && /Android/i.test(navigator.userAgent)) webusb = true;
   if ('serial' in navigator && !webusb) {
     port = await navigator.serial.requestPort();
   } else {

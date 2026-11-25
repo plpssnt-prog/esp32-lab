@@ -80,6 +80,8 @@ export class Conn extends EventTarget {
   // ---------------- USB ----------------
   async connectUSB(webusb = false) {
     let port;
+    // Su Android Web Serial non vede il chip CH343 della porta UART: usiamo WebUSB
+    if (support.usb && /Android/i.test(navigator.userAgent)) webusb = true;
     if (support.serial && !webusb) {
       port = await navigator.serial.requestPort();
     } else if (support.usb) {
@@ -89,7 +91,13 @@ export class Conn extends EventTarget {
       throw new Error('Questo browser non supporta la connessione USB. Usa Chrome.');
     }
     await port.open({ baudRate: 115200 });
-    try { await port.setSignals({ dataTerminalReady: true, requestToSend: false }); } catch (e) { /* non sempre supportato */ }
+    // Porta UART (chip CH343/CP210x): DTR e RTS sono collegati a BOOT/RST della scheda,
+    // quindi vanno lasciati disattivati, altrimenti GPIO0 resta basso (come BOOT premuto).
+    // Porta USB nativa (VID 303a): DTR attivo serve per ricevere i messaggi.
+    let vid = 0;
+    try { vid = (port.getInfo() || {}).usbVendorId || 0; } catch (e) { /* */ }
+    const native = vid === 0x303a;
+    try { await port.setSignals({ dataTerminalReady: native, requestToSend: false }); } catch (e) { /* non sempre supportato */ }
     this._port = port;
     this._writer = port.writable.getWriter();
     this.kind = 'usb';
@@ -275,11 +283,10 @@ export class Conn extends EventTarget {
     await this._usbWrite('\x02');
     await sleep(150);
     this._replBuf = '';
-    await this._usbWrite('\x04'); // soft reset: riparte main.py
-    await sleep(200);
-    this._repl = false;
+    this._repl = false;          // da qui i messaggi di avvio finiscono nella console
     this._lineBuf = '';
-    await sleep(1800);
+    await this._usbWrite('\x04'); // soft reset: riparte main.py
+    await sleep(2500);
     return this.hello();
   }
 

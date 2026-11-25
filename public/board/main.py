@@ -7,7 +7,7 @@
 import sys, gc, os, json, time, machine, binascii
 import asyncio
 
-VER = '1.0'
+VER = '1.1'
 CFG = 'lab.json'
 NUS = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E'
 NUS_TX = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'
@@ -403,7 +403,8 @@ class Lab:
 
 
 def run():
-    if machine.Pin(0, machine.Pin.IN, machine.Pin.PULL_UP).value() == 0:
+    # avvio sicuro solo all'accensione o dopo RST (non dopo il riavvio software della PWA)
+    if machine.reset_cause() != machine.SOFT_RESET and machine.Pin(0, machine.Pin.IN, machine.Pin.PULL_UP).value() == 0:
         print('Avvio sicuro: runtime ESP32 Lab non avviato')
         return
     print('ESP32 Lab runtime', VER, '- Ctrl+C per la REPL')
