@@ -265,7 +265,7 @@ export const PROJECTS = [
     learn: ['Segnale servo (impulsi di 0,5–2,5 ms)', 'Alimentazione separata per i motori', 'GND comune'],
     parts: ['board', 'breadboard', 'wires', 'servo', 'psu'],
     wiring: [['Servo arancione (segnale)', 'GPIO42', '#ca8a04'], V5('Servo rosso (+)'), GND('Servo marrone (−)')],
-    notes: ['Il servo assorbe troppa corrente per la scheda: alimentalo dal modulo di alimentazione.', 'Collega il GND del modulo al GND dell’ESP32, altrimenti il servo impazzisce.'],
+    notes: ['Con la sola USB le file rosse «5V0» della breakout NON alimentano il servo (verificato): serve un alimentatore 7–12 V nel jack della breakout. Così lo spinotto del servo si infila direttamente nella colonna 42 (marrone sul nero, rosso sul rosso, arancione sul giallo).', 'In alternativa: rosso e marrone al modulo di alimentazione del kit (o al 5V/GND della UNO) e un cavetto dal GND del modulo al GND della breakout.'],
     panel: [
       { type: 'slider', id: 'angolo', label: 'Angolo', min: 0, max: 180, value: 90, unit: '°' },
       { type: 'toggle', id: 'sweep', label: 'Oscillazione automatica', value: false },

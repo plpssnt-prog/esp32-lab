@@ -137,7 +137,7 @@ export function wiringSVG(p) {
   });
   // inserisco i fili subito dopo i morsetti (prima dei riquadri dei componenti non conta: sono a destra)
   o.push(...paths);
-  o.push(`<text x="${W - 20}" y="${H - 8}" font-size="11" text-anchor="end" fill="#64748b">5V: breakout con alimentatore 7–12 V nel jack oppure modulo di alimentazione del kit · GND sempre in comune</text>`);
+  o.push(`<text x="${W - 20}" y="${H - 8}" font-size="11" text-anchor="end" fill="#64748b">5V (file rosse «5V0»): solo con alimentatore 7–12 V nel jack della breakout, oppure modulo del kit · GND sempre in comune</text>`);
   o.push('</svg>');
   return o.join('');
 }

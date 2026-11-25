@@ -592,7 +592,7 @@ async function printPage(id) {
         h('h2', {}, 'Regole d’oro'),
         h('ul', {},
           h('li', {}, 'L’ESP32 lavora a 3,3 V: nessun segnale a 5 V sui pin (partitore 1 kΩ / 2 kΩ per l’ECHO dell’HC-SR04).'),
-          h('li', {}, 'Servo e motori si alimentano dal 5 V della breakout (con un alimentatore 7–12 V nel jack), dal modulo di alimentazione del kit o dalle batterie: mai dai pin.'),
+          h('li', {}, 'Servo e motori: con la sola USB le file rosse «5V0» della breakout non danno corrente. Serve un alimentatore 7–12 V nel jack della breakout, oppure il modulo di alimentazione del kit o le batterie, sempre con GND in comune.'),
           h('li', {}, 'GND sempre in comune tra tutte le alimentazioni.'),
           h('li', {}, 'Non usare i pin della fotocamera (GPIO4–18), della PSRAM (35–37) e della USB (19–20).'),
         ),

@@ -400,7 +400,7 @@ def disegno_solo_scheda(p, top, bottom):
 SICUREZZA = [
     'Fai e modifica i collegamenti con la scheda scollegata (cavo USB e alimentatore staccati).',
     'Nessun segnale a 5 V sui GPIO: l’ESP32 lavora a 3,3 V.',
-    'Servo e motori prendono corrente dal 5 V della breakout (alimentatore 7–12 V nel jack), dal modulo del kit o dalle batterie; il GND è sempre in comune.',
+    'Servo e motori: con la sola USB le file rosse «5V0» della breakout non danno corrente. Usa un alimentatore 7–12 V nel jack, il modulo del kit o le batterie; il GND è sempre in comune.',
 ]
 
 
@@ -511,7 +511,7 @@ def passi_collegamento(p):
             segm.append(f"{pn['pin']} → {pn['to']}")
         out.append(('Collega: ' + cp['name'], ' · '.join(segm)))
     if any(pn['term'] == '5V' for cp in comps for pn in cp['pins']) and 'buck' not in p['parts']:
-        out.append(('Alimentazione a 5 V', 'Collega un alimentatore da 7–12 V al jack della breakout (che fornisce 5 V fino a 3 A) oppure prendi il 5 V dal modulo di alimentazione del kit. In ogni caso il GND deve essere comune.'))
+        out.append(('Alimentazione a 5 V', 'Con la sola USB le file rosse «5V0» della breakout non danno corrente: collega un alimentatore da 7–12 V al jack della breakout (5 V fino a 3 A). In alternativa prendi il 5 V dal modulo di alimentazione del kit, con il GND in comune con la breakout.'))
     if comps:
         out.append(('Ricontrolla', 'Confronta ogni filo con la tabella «Tutti i collegamenti» qui sotto prima di dare corrente.'))
     return out
