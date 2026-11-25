@@ -291,7 +291,7 @@ def scheda(x, y, w, h, evid=None):
     c.setFillColor(HexColor('#334155')); c.circle(x + w / 2, cy, 5, stroke=0, fill=1)
     c.setFillColor(HexColor('#94a3b8'))
     c.roundRect(x + w / 2 - 30, y - 3, 22, 10, 3, stroke=0, fill=1); c.roundRect(x + w / 2 + 8, y - 3, 22, 10, 3, stroke=0, fill=1)
-    text(x + w / 2 - 19, y - 14, 'UART', 6.5, 'S', GREY, 'c'); text(x + w / 2 + 19, y - 14, 'USB', 6.5, 'S', GREY, 'c')
+    text(x + w / 2, y - 14, '2 porte USB-C', 6.5, 'S', GREY, 'c')
     c.setFillColor(HexColor('#60a5fa')); c.circle(x + 14, y + 22, 3, stroke=0, fill=1)
     c.setFillColor(HexColor('#f8fafc')); c.rect(x + w - 20, y + 18, 7, 7, stroke=0, fill=1)
     c.setFillColor(HexColor('#4b5563')); c.rect(x + 8, y + 6, 10, 7, stroke=0, fill=1); c.rect(x + w - 18, y + 6, 10, 7, stroke=0, fill=1)
@@ -400,7 +400,7 @@ def disegno_solo_scheda(p, top, bottom):
 SICUREZZA = [
     'Fai e modifica i collegamenti con la scheda scollegata (cavo USB e alimentatore staccati).',
     'Nessun segnale a 5 V sui GPIO: l’ESP32 lavora a 3,3 V.',
-    'Servo e motori prendono corrente dal 5 V della breakout con alimentatore esterno, dal modulo del kit o dalle batterie; il GND è sempre in comune.',
+    'Servo e motori prendono corrente dal 5 V della breakout (alimentatore 7–12 V nel jack), dal modulo del kit o dalle batterie; il GND è sempre in comune.',
 ]
 
 
@@ -474,7 +474,7 @@ def cosa_serve(p, D):
         elif k == 'cable':
             name = 'il cavo USB-C dati (e il telefono o il PC con Chrome)'
         elif k == 'psu':
-            name = 'il 5 V per i componenti: alimentatore esterno sulla breakout oppure il modulo di alimentazione del kit'
+            name = 'il 5 V per i componenti: alimentatore 7–12 V nel jack della breakout oppure il modulo di alimentazione del kit'
         tag = {'kit': 'kit Elegoo', 'acquisto': 'a parte', 'consigliato': 'a parte'}[it['src']]
         out.append((name, tag))
     if 'cable' not in p['parts']:
@@ -511,7 +511,7 @@ def passi_collegamento(p):
             segm.append(f"{pn['pin']} → {pn['to']}")
         out.append(('Collega: ' + cp['name'], ' · '.join(segm)))
     if any(pn['term'] == '5V' for cp in comps for pn in cp['pins']) and 'buck' not in p['parts']:
-        out.append(('Alimentazione a 5 V', 'Collega un alimentatore esterno alla breakout (5 V fino a 3 A) oppure prendi il 5 V dal modulo di alimentazione del kit. In ogni caso il GND deve essere comune.'))
+        out.append(('Alimentazione a 5 V', 'Collega un alimentatore da 7–12 V al jack della breakout (che fornisce 5 V fino a 3 A) oppure prendi il 5 V dal modulo di alimentazione del kit. In ogni caso il GND deve essere comune.'))
     if comps:
         out.append(('Ricontrolla', 'Confronta ogni filo con la tabella «Tutti i collegamenti» qui sotto prima di dare corrente.'))
     return out
@@ -601,7 +601,7 @@ def copertina(D):
     f.sez('Primo avvio')
     f.passi([
         ('Monta la scheda sulla breakout', 'Rispetta il verso indicato dalle serigrafie della breakout e dal tutorial Freenove.'),
-        ('Installa MicroPython', 'Da Chrome su PC apri ESP32 Lab → Scheda → passo 1. Usa la porta «UART» della scheda.'),
+        ('Installa MicroPython', 'Da Chrome (PC o telefono con hub OTG) apri ESP32 Lab → Scheda → passo 1, con la scheda in modalità download (BOOT + RST).'),
         ('Installa il runtime', 'Sempre dalla pagina Scheda, passo 2, con il cavo USB. Da qui in poi puoi usare il Bluetooth dal telefono.'),
         ('Imposta il Wi-Fi', 'Solo se vuoi i progetti web e fotocamera: rete a 2,4 GHz.'),
     ])

@@ -94,7 +94,7 @@ export function wiringSVG(p) {
   o.push(`<circle cx="${ex + ew / 2}" cy="${ey + eh * 0.58}" r="5" fill="#334155"/>`);
   o.push(`<text x="${ex + ew / 2}" y="${ey + eh * 0.58 + 32}" font-size="10" text-anchor="middle" fill="#cbd5e1">fotocamera</text>`);
   o.push(`<rect x="${ex + ew / 2 - 34}" y="${ey + eh - 12}" width="22" height="12" rx="3" fill="#94a3b8"/><rect x="${ex + ew / 2 + 12}" y="${ey + eh - 12}" width="22" height="12" rx="3" fill="#94a3b8"/>`);
-  o.push(`<text x="${ex + ew / 2}" y="${ey + eh + 16}" font-size="10" text-anchor="middle" fill="#64748b">USB · UART</text>`);
+  o.push(`<text x="${ex + ew / 2}" y="${ey + eh + 16}" font-size="10" text-anchor="middle" fill="#64748b">2 porte USB-C</text>`);
   // morsetti usati
   const tx = bx + bw - 112, tw = 96;
   const termY = {};
@@ -137,7 +137,7 @@ export function wiringSVG(p) {
   });
   // inserisco i fili subito dopo i morsetti (prima dei riquadri dei componenti non conta: sono a destra)
   o.push(...paths);
-  o.push(`<text x="${W - 20}" y="${H - 8}" font-size="11" text-anchor="end" fill="#64748b">5V: breakout con alimentatore esterno oppure modulo di alimentazione del kit · GND sempre in comune</text>`);
+  o.push(`<text x="${W - 20}" y="${H - 8}" font-size="11" text-anchor="end" fill="#64748b">5V: breakout con alimentatore 7–12 V nel jack oppure modulo di alimentazione del kit · GND sempre in comune</text>`);
   o.push('</svg>');
   return o.join('');
 }

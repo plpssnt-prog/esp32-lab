@@ -2,12 +2,20 @@
 import { ESPLoader, Transport } from '../vendor/esptool.js';
 
 export function canFlash() {
-  return 'serial' in navigator;
+  return 'serial' in navigator || 'usb' in navigator;
 }
 
 export async function flashFirmware({ url, eraseAll = true, log, progress }) {
-  if (!canFlash()) throw new Error('Serve Chrome con Web Serial (PC, oppure Android 17 o successivo).');
-  const port = await navigator.serial.requestPort();
+  if (!canFlash()) throw new Error('Questo browser non può collegarsi alla scheda via USB: usa Chrome.');
+  let port;
+  if ('serial' in navigator) {
+    port = await navigator.serial.requestPort();
+  } else {
+    // telefono Android senza Web Serial: WebUSB con il polyfill (dispositivi USB di classe CDC)
+    log('Web Serial non disponibile: uso WebUSB (modalità telefono)');
+    const { serial } = await import('../vendor/serial-polyfill.js');
+    port = await serial.requestPort();
+  }
   const transport = new Transport(port, true);
   const term = { clean() {}, writeLine: (s) => log(s), write: (s) => log(s) };
   const loader = new ESPLoader({ transport, baudrate: 460800, terminal: term, debugLogging: false });
