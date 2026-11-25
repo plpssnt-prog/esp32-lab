@@ -78,9 +78,9 @@ export class Conn extends EventTarget {
   }
 
   // ---------------- USB ----------------
-  async connectUSB() {
+  async connectUSB(webusb = false) {
     let port;
-    if (support.serial) {
+    if (support.serial && !webusb) {
       port = await navigator.serial.requestPort();
     } else if (support.usb) {
       const { serial } = await import('../vendor/serial-polyfill.js');

@@ -335,6 +335,7 @@ async function boardPage() {
       h('div', { class: 'btn-row' },
         h('button', { class: 'btn', onclick: () => guard(() => conn.connectBLE()) }, 'Bluetooth'),
         h('button', { class: 'btn ghost', onclick: () => guard(() => conn.connectUSB()) }, 'USB'),
+        'usb' in navigator ? h('button', { class: 'btn ghost', onclick: () => guard(() => conn.connectUSB(true)) }, 'USB (WebUSB)') : null,
         h('button', { class: 'btn ghost', onclick: () => guard(() => conn.disconnect()) }, 'Scollega'),
         h('button', { class: 'btn ghost', onclick: () => guard(async () => { await conn.hello(); updInfo(); }) }, 'Aggiorna'),
       ),
@@ -360,6 +361,25 @@ async function boardPage() {
         });
         toast('MicroPython installato! Ora il passo 2.', 'ok');
       }) }, 'Installa MicroPython'),
+      h('div', { class: 'btn-row' },
+        h('button', { class: 'btn ghost small', onclick: () => guard(async () => {
+          if (conn.kind === 'usb') await conn.disconnect();
+          flashLog.textContent = '';
+          const { flashFirmware } = await import('./flash.js');
+          await flashFirmware({
+            url: BOARD.firmware, eraseAll: erase.checked, webusb: true,
+            log: (s) => { flashLog.textContent += s + '\n'; flashLog.scrollTop = flashLog.scrollHeight; },
+            progress: (f) => { flashBar.firstChild.style.width = (f * 100).toFixed(1) + '%'; },
+          });
+          toast('MicroPython installato! Ora il passo 2.', 'ok');
+        }) }, 'Installa con WebUSB'),
+        h('button', { class: 'btn ghost small', onclick: () => guard(async () => {
+          const { usbDiagnosi } = await import('./flash.js');
+          flashLog.textContent += '— Diagnosi USB —\n';
+          await usbDiagnosi((s) => { flashLog.textContent += s + '\n'; });
+        }) }, 'Diagnosi USB'),
+      ),
+      h('p', { class: 'hint' }, 'La scheda non compare? «Diagnosi USB» mostra tutti i dispositivi che il telefono vede: se la lista è vuota il problema è cavo, hub o alimentazione.'),
       flashBar, flashLog,
       'serial' in navigator ? null : ('usb' in navigator ? h('p', { class: 'hint' }, 'Sul telefono si usa WebUSB: se non funziona, fai questo passo da Chrome su PC.') : h('p', { class: 'callout' }, 'Questo browser non può collegarsi via USB: usa Chrome su PC o su Android.')),
     ),

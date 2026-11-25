@@ -5,14 +5,14 @@ export function canFlash() {
   return 'serial' in navigator || 'usb' in navigator;
 }
 
-export async function flashFirmware({ url, eraseAll = true, log, progress }) {
+export async function flashFirmware({ url, eraseAll = true, log, progress, webusb = false }) {
   if (!canFlash()) throw new Error('Questo browser non può collegarsi alla scheda via USB: usa Chrome.');
   let port;
-  if ('serial' in navigator) {
+  if ('serial' in navigator && !webusb) {
     port = await navigator.serial.requestPort();
   } else {
     // telefono Android senza Web Serial: WebUSB con il polyfill (dispositivi USB di classe CDC)
-    log('Web Serial non disponibile: uso WebUSB (modalità telefono)');
+    log('Uso WebUSB (modalità alternativa)');
     const { serial } = await import('../vendor/serial-polyfill.js');
     port = await serial.requestPort();
   }
@@ -39,4 +39,20 @@ export async function flashFirmware({ url, eraseAll = true, log, progress }) {
   } finally {
     try { await transport.disconnect(); } catch (e) { /* */ }
   }
+}
+
+// Elenca qualsiasi dispositivo USB che il telefono vede (per capire se cavo e hub funzionano)
+export async function usbDiagnosi(log) {
+  if (!('usb' in navigator)) throw new Error('WebUSB non disponibile in questo browser');
+  const d = await navigator.usb.requestDevice({ filters: [] });
+  const hex = (n) => n.toString(16).padStart(4, '0');
+  log(`Trovato: ${d.manufacturerName || '?'} ${d.productName || ''} (VID ${hex(d.vendorId)}, PID ${hex(d.productId)})`);
+  const known = { '303a': 'ESP32-S3 (USB nativa)', '1a86': 'chip WCH CH34x (porta UART)', '10c4': 'chip CP210x' };
+  log('Tipo: ' + (known[hex(d.vendorId)] || 'sconosciuto'));
+  try {
+    for (const conf of d.configurations || []) for (const itf of conf.interfaces) {
+      const a = itf.alternates[0];
+      log(`  interfaccia ${itf.interfaceNumber}: classe ${a.interfaceClass}${a.interfaceClass === 2 || a.interfaceClass === 10 ? ' (seriale CDC)' : a.interfaceClass === 255 ? ' (del produttore)' : ''}`);
+    }
+  } catch (e) { /* */ }
 }
