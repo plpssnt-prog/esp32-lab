@@ -9,19 +9,29 @@ import time, asyncio
 def apri_camera(lab, fs, q=80, fs_sw=None):
     """Apre la fotocamera in JPEG. Se il sensore non fa JPEG da solo
     (errore ESP_ERR_NOT_SUPPORTED) usa RGB565 e converte in JPEG via software."""
-    enc = None
     try:
         cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=fs, jpeg_quality=q, fb_count=2)
+        lab.log('Sensore:', cam.get_sensor_name(), '- JPEG del sensore')
+        return cam, None
     except OSError:
-        import jpeg
-        cam = Camera(pixel_format=PixelFormat.RGB565, frame_size=fs_sw or fs, fb_count=1)
-        enc = jpeg.Encoder(width=cam.get_pixel_width(), height=cam.get_pixel_height(),
-                           pixel_format='RGB565', quality=q)
-    try:
-        lab.log('Sensore:', cam.get_sensor_name(), '- JPEG software' if enc else '- JPEG del sensore')
-    except Exception:
         pass
-    return cam, enc
+    import jpeg
+    ultimo = None
+    for pf, fmt in ((PixelFormat.YUV422, 'YCbYCr'), (PixelFormat.RGB565, 'RGB565_BE'),
+                    (PixelFormat.GRAYSCALE, 'GRAY')):
+        cam = None
+        try:
+            cam = Camera(pixel_format=pf, frame_size=fs_sw or fs, fb_count=1)
+            enc = jpeg.Encoder(width=cam.get_pixel_width(), height=cam.get_pixel_height(),
+                               pixel_format=fmt, quality=q)
+            lab.log('Sensore:', cam.get_sensor_name(), '- JPEG software da', fmt)
+            return cam, enc
+        except Exception as e:
+            ultimo = e
+            lab.log('Formato', fmt, 'non usabile:', e)
+            if cam:
+                cam.deinit()
+    raise ultimo
 
 
 def scatta(cam, enc):
