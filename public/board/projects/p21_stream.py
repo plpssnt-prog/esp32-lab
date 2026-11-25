@@ -3,6 +3,29 @@
 from camera import Camera, PixelFormat, FrameSize
 import asyncio, time
 
+
+def apri_camera(lab, fs, q=80, fs_sw=None):
+    """Apre la fotocamera in JPEG. Se il sensore non fa JPEG da solo
+    (errore ESP_ERR_NOT_SUPPORTED) usa RGB565 e converte in JPEG via software."""
+    enc = None
+    try:
+        cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=fs, jpeg_quality=q, fb_count=2)
+    except OSError:
+        import jpeg
+        cam = Camera(pixel_format=PixelFormat.RGB565, frame_size=fs_sw or fs, fb_count=1)
+        enc = jpeg.Encoder(width=cam.get_pixel_width(), height=cam.get_pixel_height(),
+                           pixel_format='RGB565', quality=q)
+    try:
+        lab.log('Sensore:', cam.get_sensor_name(), '- JPEG software' if enc else '- JPEG del sensore')
+    except Exception:
+        pass
+    return cam, enc
+
+
+def scatta(cam, enc):
+    img = cam.capture()
+    return enc.encode(img) if enc else img
+
 PAGINA = """<!doctype html><html lang=it><meta name=viewport content="width=device-width,initial-scale=1">
 <title>Video ESP32</title><style>body{font-family:system-ui;background:#f6f7fb;color:#1f2937;margin:0;padding:12px;text-align:center}
 img{width:100%;max-width:640px;border-radius:12px;background:#e5e7eb}label{margin:8px;display:inline-block}</style>
@@ -11,8 +34,7 @@ img{width:100%;max-width:640px;border-radius:12px;background:#e5e7eb}label{margi
 
 
 async def main(lab):
-    cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=FrameSize.VGA,
-                 jpeg_quality=80, fb_count=2)
+    cam, enc = apri_camera(lab, FrameSize.VGA, 80, FrameSize.QVGA)
     try:
         if not await lab.wifi():
             return
@@ -25,7 +47,7 @@ async def main(lab):
                     b'Cache-Control: no-store\r\n\r\n')
             n, t0 = 0, time.ticks_ms()
             while True:
-                img = cam.capture()
+                img = scatta(cam, enc)
                 w.write(('--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n' % len(img)).encode())
                 w.write(img)
                 w.write(b'\r\n')

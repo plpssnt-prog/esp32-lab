@@ -4,6 +4,29 @@ from camera import Camera, PixelFormat, FrameSize
 from machine import Pin
 import neopixel, time, asyncio
 
+
+def apri_camera(lab, fs, q=80, fs_sw=None):
+    """Apre la fotocamera in JPEG. Se il sensore non fa JPEG da solo
+    (errore ESP_ERR_NOT_SUPPORTED) usa RGB565 e converte in JPEG via software."""
+    enc = None
+    try:
+        cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=fs, jpeg_quality=q, fb_count=2)
+    except OSError:
+        import jpeg
+        cam = Camera(pixel_format=PixelFormat.RGB565, frame_size=fs_sw or fs, fb_count=1)
+        enc = jpeg.Encoder(width=cam.get_pixel_width(), height=cam.get_pixel_height(),
+                           pixel_format='RGB565', quality=q)
+    try:
+        lab.log('Sensore:', cam.get_sensor_name(), '- JPEG software' if enc else '- JPEG del sensore')
+    except Exception:
+        pass
+    return cam, enc
+
+
+def scatta(cam, enc):
+    img = cam.capture()
+    return enc.encode(img) if enc else img
+
 pir = Pin(41, Pin.IN)
 np = neopixel.NeoPixel(Pin(48), 1)
 foto = []            # ultime 5 foto (in memoria PSRAM)
@@ -23,7 +46,7 @@ def on_armato(v):
 
 async def main(lab):
     lab.on('armato', on_armato)
-    cam = Camera(pixel_format=PixelFormat.JPEG, frame_size=FrameSize.VGA, jpeg_quality=85, fb_count=2)
+    cam, enc = apri_camera(lab, FrameSize.VGA, 85, FrameSize.VGA)
     try:
         if await lab.wifi():
             async def pagina(path, q, w):
@@ -44,7 +67,7 @@ async def main(lab):
             lab.send('movimento', m)
             if armato and m and not prima:
                 n += 1
-                img = bytes(cam.capture())
+                img = bytes(scatta(cam, enc))
                 t = time.localtime()
                 foto.append((img, 'Movimento %d alle %02d:%02d:%02d (ora UTC)' % (n, t[3], t[4], t[5])))
                 if len(foto) > 5:
