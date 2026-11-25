@@ -313,7 +313,7 @@ async function boardPage() {
     const i = conn.info;
     const rows = !conn.connected ? [['Stato', 'Non collegata']] : !i ? [['Stato', 'Collegata via ' + (conn.kind === 'ble' ? 'Bluetooth' : 'USB')], ['Runtime', 'non risponde (installalo al passo 2)']] : [
       ['Nome', i.name], ['Collegata via', conn.kind === 'ble' ? 'Bluetooth' : 'USB'], ['Runtime', 'v' + i.ver],
-      ['MicroPython', (i.mp || '').split(';')[0]], ['Fotocamera', i.cam ? 'supportata dal firmware' : 'non supportata'],
+      ['MicroPython', ((i.mp || '').split(';')[1] || i.mp || '').replace('MicroPython', '').trim().split(' on ')[0]], ['Fotocamera', i.cam ? 'supportata dal firmware' : 'non supportata'],
       ['Memoria libera', Math.round(i.mem / 1024) + ' KB'], ['Wi-Fi', i.ssid ? i.ssid + (i.ip ? ' · ' + i.ip : ' · non collegato') : 'non configurato'],
       ['Progetto', conn.state && conn.state.app ? conn.state.app + (conn.state.run ? ' (in esecuzione)' : ' (fermo)') : 'nessuno'],
     ];
