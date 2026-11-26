@@ -195,8 +195,10 @@ export class Conn extends EventTarget {
 
   _onMsg(m) {
     if (m.t === 'info') {
+      const nuova = !this.info;
       this.info = m;
       this.state = { run: m.run, id: m.id, app: m.app };
+      if (nuova) setTimeout(() => this.emit('info', m), 0);   // anche le info spontanee aggiornano la PWA
     } else if (m.t === 'state') {
       this.state = { run: m.run, id: m.id, app: m.app };
     } else if (m.t === 'ip' && this.info) {
@@ -207,6 +209,11 @@ export class Conn extends EventTarget {
       this.boardOnline = !!m.board;
       if (!m.board) { this.info = null; this.state = null; this.emit('info', null); }
       else this.hello();
+    }
+    // la scheda parla ma non conosciamo ancora il runtime (risposta a hello persa): richiedi le info
+    if (!this.info && m.t !== 'net' && this.kind && Date.now() - (this._lastHello || 0) > 8000) {
+      this._lastHello = Date.now();
+      setTimeout(() => this.hello(), 0);
     }
     this._waiters = this._waiters.filter((w) => {
       if (w.match(m)) { w.resolve(m); clearTimeout(w.timer); return false; }
@@ -249,16 +256,19 @@ export class Conn extends EventTarget {
   cmd(c, v) { return this.send({ t: 'c', c, v }, 'c:' + c); }
 
   async hello() {
+    this._lastHello = Date.now();
+    const attesa = this.kind === 'net' ? 5000 : 2500;   // via Internet le risposte possono tardare
     for (let i = 0; i < 3; i++) {
+      if (this.info && i > 0) return this.info;          // arrivate nel frattempo
       try {
-        const w = this.waitMsg((m) => m.t === 'info', 2500);
+        const w = this.waitMsg((m) => m.t === 'info', attesa);
         await this.send({ t: 'hello' });
         const info = await w;
         this.emit('info', info);
         return info;
       } catch (e) { /* riprova */ }
     }
-    this.info = null;
+    if (this.info) return this.info;
     this.emit('info', null);
     return null;
   }
