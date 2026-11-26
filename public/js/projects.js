@@ -411,7 +411,7 @@ export const PROJECTS = [
     learn: ['Fotocamera e formato JPEG', 'Memoria PSRAM', 'Inviare immagini via HTTP'],
     parts: ['board'], wiring: [],
     notes: ['La fotocamera deve essere inserita nel connettore della scheda (di solito arriva già montata).', 'Serve il firmware con fotocamera installato dalla pagina Scheda.'],
-    panel: [{ type: 'web', label: 'Pagina fotocamera' }, { type: 'value', key: 'scatti', label: 'Foto scattate' }],
+    panel: [{ type: 'camera', id: 'foto', label: 'Foto (anche da fuori casa)' }, { type: 'web', label: 'Pagina fotocamera' }, { type: 'value', key: 'scatti', label: 'Foto scattate' }],
   },
   {
     id: 'stream', level: 5, title: 'Video in diretta', time: '10 min', file: 'p21_stream.py', wifi: true, cam: true,
@@ -419,7 +419,7 @@ export const PROJECTS = [
     learn: ['Streaming MJPEG', 'Connessioni lunghe e asyncio'],
     parts: ['board'], wiring: [],
     notes: ['Il video funziona meglio con la scheda vicina al router.', 'Una persona alla volta: più spettatori rallentano la scheda.'],
-    panel: [{ type: 'web', label: 'Guarda il video' }, { type: 'value', key: 'fps', label: 'Fotogrammi al secondo', unit: 'fps' }],
+    panel: [{ type: 'camera', id: 'foto', label: 'Foto (anche da fuori casa)' }, { type: 'web', label: 'Guarda il video' }, { type: 'value', key: 'fps', label: 'Fotogrammi al secondo', unit: 'fps' }],
   },
   {
     id: 'pancam', level: 5, title: 'Telecamera che ruota', time: '25 min', file: 'p22_pancam.py', wifi: true, cam: true,
@@ -428,7 +428,7 @@ export const PROJECTS = [
     parts: ['board', 'servo', 'psu', 'wires'],
     wiring: [['Servo arancione', 'GPIO42', '#ca8a04'], V5('Servo rosso'), GND('Servo marrone')],
     notes: ['Puoi ruotare anche dal cursore qui sotto (Bluetooth), oltre che dalla pagina web.'],
-    panel: [{ type: 'web', label: 'Apri video e comandi' }, { type: 'slider', id: 'angolo', label: 'Rotazione', min: 0, max: 180, value: 90, unit: '°' }],
+    panel: [{ type: 'camera', id: 'foto', label: 'Foto (anche da fuori casa)' }, { type: 'web', label: 'Apri video e comandi' }, { type: 'slider', id: 'angolo', label: 'Rotazione', min: 0, max: 180, value: 90, unit: '°' }],
   },
   {
     id: 'pircam', level: 5, title: 'Allarme con foto', time: '20 min', file: 'x_pir_cam.py', wifi: true, cam: true, buy: true,
@@ -437,7 +437,7 @@ export const PROJECTS = [
     parts: ['board', 'breadboard', 'wires', 'pir', 'psu'],
     wiring: [V5('PIR VCC'), GND('PIR GND'), ['PIR OUT', 'GPIO41', '#16a34a']],
     notes: ['Il PIR ha due trimmer: sensibilità e durata. Gira la durata al minimo (tutto antiorario).', 'Dopo l’accensione aspetta circa 30 secondi.'],
-    panel: [
+    panel: [{ type: 'camera', id: 'foto', label: 'Foto (anche da fuori casa)' }, 
       { type: 'web', label: 'Vedi le foto' },
       { type: 'toggle', id: 'armato', label: 'Allarme inserito', value: true },
       { type: 'led', key: 'movimento', label: 'Movimento' },
@@ -491,7 +491,7 @@ export const PROJECTS = [
     parts: ['board', 'chassis', 'l298n', 'batt', 'powerbank', 'wires'],
     wiring: [['L298N IN1 / IN2', 'GPIO21 / GPIO47', '#2563eb'], ['L298N IN3 / IN4', 'GPIO14 / GPIO1', '#9333ea'], GND('L298N GND')],
     notes: ['Montaggio come la «Macchinina telecomandata», con la scheda rivolta in avanti.', 'Puoi guidare anche con il joystick qui sotto via Bluetooth.'],
-    panel: [{ type: 'web', label: 'Apri guida FPV' }, { type: 'joystick', id: 'joy', label: 'Guida (Bluetooth)' }],
+    panel: [{ type: 'camera', id: 'foto', label: 'Foto (anche da fuori casa)' }, { type: 'web', label: 'Apri guida FPV' }, { type: 'joystick', id: 'joy', label: 'Guida (Bluetooth)' }],
   },
   {
     id: 'line', level: 6, title: 'Robot segui-linea', time: '40 min', file: 'x_line.py', buy: true,
@@ -538,7 +538,7 @@ export const PROJECTS = [
       'Se una pompa dà un colpo all’accensione della scheda, aggiungi una resistenza da 10 kΩ tra SIG e GND del modulo MOSFET.',
       'Il progetto si riavvia da solo dopo un’interruzione di corrente e ricorda le impostazioni.',
     ],
-    panel: [
+    panel: [{ type: 'camera', id: 'foto', label: 'Foto (anche da fuori casa)' }, 
       { type: 'web', label: 'Pagina irrigazione (regolazioni e fotocamera)' },
       { type: 'value', key: 'umid0', label: 'Umidità zona A', unit: '%', big: true },
       { type: 'value', key: 'umid1', label: 'Umidità zona B', unit: '%', big: true },

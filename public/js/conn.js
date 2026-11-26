@@ -77,6 +77,24 @@ export class Conn extends EventTarget {
     }
   }
 
+  // ---------------- Internet (ponte Worker) ----------------
+  async connectNet(net) {
+    if (!net || !net.dev || !net.key) throw new Error('Internet non configurato: attivalo nella pagina Scheda');
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${proto}//${location.host}/api/ws?role=app&dev=${net.dev}&key=${net.key}`);
+    await new Promise((resolve, reject) => {
+      ws.onopen = resolve;
+      ws.onerror = () => reject(new Error('Impossibile raggiungere il ponte Internet'));
+    });
+    ws.onmessage = (e) => { if (typeof e.data === 'string') this._onText(e.data.endsWith('\n') ? e.data : e.data + '\n', 'net'); };
+    ws.onclose = () => { if (this.kind === 'net') this._closed('Internet scollegato'); };
+    this._ws = ws;
+    this.kind = 'net';
+    this.emit('status', { text: 'Collegato via Internet' });
+    const info = await this.hello();
+    if (!info) this.emit('status', { text: 'Ponte collegato, ma la scheda non risponde: è accesa e con Internet attivo?' });
+  }
+
   // ---------------- USB ----------------
   async connectUSB(webusb = false) {
     let port;
@@ -138,6 +156,7 @@ export class Conn extends EventTarget {
     this.kind = null;
     try {
       if (k === 'ble' && this._dev && this._dev.gatt.connected) this._dev.gatt.disconnect();
+      if (k === 'net' && this._ws) this._ws.close();
       if (k === 'usb' && this._port) {
         try { await this._reader.cancel(); } catch (e) { /* */ }
         try { this._writer.releaseLock(); } catch (e) { /* */ }
@@ -165,8 +184,8 @@ export class Conn extends EventTarget {
     while ((i = this._lineBuf.indexOf('\n')) >= 0) {
       const line = this._lineBuf.slice(0, i).replace(/\r$/, '');
       this._lineBuf = this._lineBuf.slice(i + 1);
-      if (src === 'ble' || line.startsWith('@@')) {
-        try { this._onMsg(JSON.parse(src === 'ble' ? line : line.slice(2))); } catch (e) { this.emit('console', line); }
+      if (src === 'ble' || src === 'net' || line.startsWith('@@')) {
+        try { this._onMsg(JSON.parse(line.startsWith('@@') ? line.slice(2) : line)); } catch (e) { this.emit('console', line); }
       } else if (line.trim()) {
         this.emit('console', line);
       }
@@ -184,6 +203,10 @@ export class Conn extends EventTarget {
       this.info.ip = m.ip;
     } else if (m.t === 'web' && this.info) {
       this.info.web = m.url;
+    } else if (m.t === 'net' && this.kind === 'net') {
+      this.boardOnline = !!m.board;
+      if (!m.board) { this.info = null; this.state = null; this.emit('info', null); }
+      else this.hello();
     }
     this._waiters = this._waiters.filter((w) => {
       if (w.match(m)) { w.resolve(m); clearTimeout(w.timer); return false; }
@@ -216,6 +239,7 @@ export class Conn extends EventTarget {
       if (coalesce) { o = this._pendingCoalesce.get(coalesce); this._pendingCoalesce.delete(coalesce); }
       const line = JSON.stringify(o) + '\n';
       if (this.kind === 'ble') await this._bleWrite(line);
+      else if (this.kind === 'net') this._ws.send(line);
       else if (this.kind === 'usb' && !this._repl) await this._usbWrite(line);
     });
     this._queue = p.catch(() => {});
@@ -335,7 +359,7 @@ export class Conn extends EventTarget {
         } finally {
           await this.exitRawAndReset();
         }
-      } else if (this.kind === 'ble') {
+      } else if (this.kind === 'ble' || this.kind === 'net') {
         await this.send({ t: 'stop' });
         await this._putBLE('app.py', bytes);
         await this.send({ t: 'meta', id: project.id, name: project.title });
@@ -363,7 +387,7 @@ export class Conn extends EventTarget {
         }
         return ok;
       }
-      if (this.kind === 'ble' && this.info) {
+      if ((this.kind === 'ble' || this.kind === 'net') && this.info) {
         await this._putBLE('main.py', bytes, true);
         await this.send({ t: 'reset' });
         return true;

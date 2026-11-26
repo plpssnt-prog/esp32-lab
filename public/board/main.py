@@ -7,7 +7,7 @@
 import sys, gc, os, json, time, machine, binascii
 import asyncio
 
-VER = '1.1'
+VER = '1.2'
 CFG = 'lab.json'
 NUS = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E'
 NUS_TX = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'
@@ -128,6 +128,9 @@ class Lab:
         self.server = None
         self.ip = None
         self.usb = False
+        self.ws_ok = False          # collegata al ponte Internet (Worker Cloudflare)
+        self.net_q = []             # messaggi in uscita verso Internet: (opcode, dati)
+        self.cloud_task = None
         self.running = False
         self.ble = None
         self.reply = reply
@@ -150,6 +153,14 @@ class Lab:
         if not self.usb:
             print(m)
         self._out({'t': 'log', 'm': m})
+
+    def foto(self, jpeg):
+        """Invia una foto JPEG al ponte Internet (la vedi nella PWA anche fuori casa)."""
+        if not self.ws_ok or not jpeg:
+            return False
+        self.net_q = [m for m in self.net_q if m[0] != 2]   # tengo solo la foto piu' recente
+        self.net_q.append((2, bytes(jpeg)))
+        return True
 
     async def wifi(self, timeout=15):
         """Collega il Wi-Fi salvato e restituisce l'IP (o None)."""
@@ -221,6 +232,10 @@ class Lab:
             self.ble.send(s.encode() + b'\n')
         if self.usb:
             print('@@' + s)
+        if self.ws_ok:
+            if len(self.net_q) > 60:
+                self.net_q.pop(0)
+            self.net_q.append((1, s.encode()))
 
     def _err(self, e):
         import io
@@ -245,6 +260,7 @@ class Lab:
                    'id': self.cfg.get('app_id'), 'app': self.cfg.get('app_name'),
                    'run': self.running, 'ip': self.ip, 'ssid': self.cfg.get('ssid'),
                    'mtu': self.ble.mtu() if self.ble else 0,
+                   'net': self.ws_ok, 'cloud': bool((self.cfg.get('cloud') or {}).get('url')),
                    'mem': gc.mem_free(), 'cam': cam,
                    'mp': sys.version, 'board': sys.implementation._machine})
 
@@ -366,6 +382,13 @@ class Lab:
             self.log('Nome salvato: riavvio...')
             await asyncio.sleep_ms(300)
             machine.reset()
+        elif t == 'cloud':
+            url = d.get('url', '')
+            self.cfg['cloud'] = {'url': url, 'dev': d.get('dev', ''), 'key': d.get('key', '')}
+            _save(self.cfg)
+            self.start_cloud()
+            self.log('Internet ' + ('attivato' if url else 'disattivato'))
+            self._info()
         elif t == 'reset':
             await asyncio.sleep_ms(200)
             machine.reset()
@@ -390,10 +413,137 @@ class Lab:
                     b += ch
             await asyncio.sleep_ms(20)
 
+
+    # ---------- ponte Internet (WebSocket verso il Worker Cloudflare) ----------
+    def start_cloud(self):
+        if self.cloud_task:
+            self.cloud_task.cancel()
+            self.cloud_task = None
+        self.ws_ok = False
+        if (self.cfg.get('cloud') or {}).get('url'):
+            self.cloud_task = asyncio.create_task(self.cloud_loop())
+
+    async def cloud_loop(self):
+        attesa = 2
+        while True:
+            c = self.cfg.get('cloud') or {}
+            if not c.get('url'):
+                return
+            if not self.cfg.get('ssid'):
+                await asyncio.sleep(30)
+                continue
+            if not await self.wifi():
+                await asyncio.sleep(15)
+                continue
+            try:
+                await self._ws_sessione(c)
+                attesa = 2
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                self.ws_ok = False
+                if attesa >= 8:
+                    self.log('Internet non raggiungibile, riprovo:', repr(e))
+            await asyncio.sleep(attesa)
+            attesa = min(60, attesa * 2)
+
+    @staticmethod
+    def _frame(data, op=1):
+        n = len(data)
+        if n < 126:
+            h = bytes((0x80 | op, 0x80 | n))
+        elif n < 65536:
+            h = bytes((0x80 | op, 0x80 | 126, n >> 8, n & 255))
+        else:
+            h = bytes((0x80 | op, 0x80 | 127)) + n.to_bytes(8, 'big')
+        m = os.urandom(4)
+        b = bytearray(data)
+        for i in range(n):
+            b[i] ^= m[i & 3]
+        return h + m + b
+
+    async def _ws_sessione(self, c):
+        url = c['url']
+        sicuro = url.startswith('https')
+        host = url.split('://', 1)[1].split('/')[0]
+        porta = 443 if sicuro else 80
+        if ':' in host:
+            host, porta = host.split(':')
+            porta = int(porta)
+        ctx = None
+        if sicuro:
+            import ssl
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.verify_mode = ssl.CERT_NONE
+        r, w = await asyncio.open_connection(host, porta, ssl=ctx) if ctx else await asyncio.open_connection(host, porta)
+        try:
+            chiave = binascii.b2a_base64(os.urandom(16)).strip().decode()
+            w.write(('GET /api/ws?role=board&dev=%s&key=%s HTTP/1.1\r\nHost: %s\r\n'
+                     'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: %s\r\n'
+                     'Sec-WebSocket-Version: 13\r\n\r\n' % (c['dev'], c['key'], host, chiave)).encode())
+            await w.drain()
+            riga = await r.readline()
+            if b' 101' not in riga:
+                raise OSError('risposta ' + riga.decode().strip())
+            while True:
+                h = await r.readline()
+                if not h or h == b'\r\n':
+                    break
+            self.net_q = []
+            self.ws_ok = True
+            self.log('Collegata a Internet')
+            self._info()
+            mittente = asyncio.create_task(self._ws_mittente(w))
+            try:
+                while True:
+                    h = await r.readexactly(2)
+                    op, n = h[0] & 15, h[1] & 127
+                    if n == 126:
+                        n = int.from_bytes(await r.readexactly(2), 'big')
+                    elif n == 127:
+                        n = int.from_bytes(await r.readexactly(8), 'big')
+                    m = await r.readexactly(4) if h[1] & 128 else None
+                    d = await r.readexactly(n) if n else b''
+                    if m:
+                        d = bytearray(d)
+                        for i in range(n):
+                            d[i] ^= m[i & 3]
+                    if op == 8:
+                        break
+                    if op == 9:
+                        self.net_q.append((10, bytes(d)))
+                    elif op == 1:
+                        for riga in bytes(d).split(b'\n'):
+                            if riga.strip():
+                                await self.handle(riga, 'net')
+            finally:
+                mittente.cancel()
+        finally:
+            self.ws_ok = False
+            try:
+                w.close()
+                await w.wait_closed()
+            except Exception:
+                pass
+
+    async def _ws_mittente(self, w):
+        t = time.ticks_ms()
+        while True:
+            while self.net_q:
+                op, d = self.net_q.pop(0)
+                w.write(self._frame(d, op))
+                await w.drain()
+            if time.ticks_diff(time.ticks_ms(), t) > 30000:
+                w.write(self._frame(b'{"t":"ping"}'))
+                await w.drain()
+                t = time.ticks_ms()
+            await asyncio.sleep_ms(20)
+
     async def loop(self):
         asyncio.create_task(self.usb_reader())
         if self.cfg.get('ssid'):
             asyncio.create_task(self.wifi())
+        self.start_cloud()
         await self.start()
         while True:
             if self.ble and self.ble.pending:

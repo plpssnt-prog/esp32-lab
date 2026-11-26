@@ -34,6 +34,15 @@ Pulizia: usa `try/finally` in `main`; quando il progetto viene fermato il task r
 PWA → scheda: `hello`, `put {f,o,d(base64),end}`, `meta {id,name}`, `run`, `stop`, `c {c,v}`, `wifi {ssid,pw}`, `name {v}`, `reset`.
 Scheda → PWA: `info`, `state`, `k {k,v}`, `log`, `err`, `ack`, `ip`, `web`. Via USB le righe della scheda hanno il prefisso `@@`; il caricamento via USB usa la raw REPL.
 
+## Internet (comandi da fuori casa)
+
+`src/index.js` è il Worker: serve la PWA (asset) e sotto `/api/` fa da ponte con un Durable Object per scheda (`Relay`, SQLite).
+- La scheda (runtime ≥ 1.2) apre un WebSocket `wss://…/api/ws?role=board&dev=…&key=…` e lo tiene vivo con un ping ogni 30 s.
+- La PWA apre `wss://…/api/ws?role=app&dev=…&key=…`: i messaggi JSON del protocollo passano invariati nei due sensi.
+- Il primo collegamento registra l'hash SHA-256 della chiave; poi una chiave diversa riceve 403.
+- `lab.foto(jpeg)` manda una foto (frame binario): l'ultima resta in `/api/img`, `/api/img?meta=1` dà l'ora dello scatto.
+- Il codice `dev:key` si genera nella pagina Scheda (passo 4) e si può copiare su altri telefoni.
+
 ## Struttura
 
 ```
@@ -45,7 +54,8 @@ public/
   vendor/                        esptool-js 0.7.1, web-serial-polyfill 1.0.15
   pdf/                           PDF dei progetti e manuale
   sw.js, manifest.webmanifest    PWA offline
-wrangler.jsonc                   Worker Cloudflare (solo asset statici)
+src/index.js                     Worker: asset + ponte Internet (Durable Object Relay)
+wrangler.jsonc                   configurazione Worker, binding RELAY e migrazione SQLite
 ```
 
 ## Aggiungere un progetto
@@ -69,7 +79,7 @@ wrangler.jsonc                   Worker Cloudflare (solo asset statici)
 
 ## Pubblicazione
 
-Worker Cloudflare collegato a questo repo (Workers → Create → Import a repository). Nessun build: `wrangler.jsonc` pubblica la cartella `public`.
+Worker Cloudflare collegato a questo repo (Workers → Create → Import a repository). Nessun build: `npx wrangler deploy` pubblica `src/index.js`, la cartella `public` e crea il Durable Object.
 
 ## Limiti noti
 

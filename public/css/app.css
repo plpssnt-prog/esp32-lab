@@ -153,3 +153,5 @@ body.print main{max-width:900px}
 }
 .diagram.drawing{padding:0;overflow:hidden}
 .diagram.drawing img{display:block;width:100%;height:auto;cursor:zoom-in}
+.camimg{display:block;width:100%;border-radius:10px;background:#e5e7eb;min-height:120px;margin-bottom:6px}
+.w-camera{grid-column:1/-1}

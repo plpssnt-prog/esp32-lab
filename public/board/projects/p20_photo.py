@@ -33,6 +33,13 @@ def apri_camera(lab, fs, q=80, fs_sw=None):
     raise ultimo
 
 
+def invia_foto(lab, cam, enc):
+    """Manda una foto al ponte Internet (serve il runtime 1.2)."""
+    f = getattr(lab, 'foto', None)
+    if f:
+        f(scatta(cam, enc))
+
+
 def scatta(cam, enc):
     img = cam.capture()
     return enc.encode(img) if enc else img
@@ -48,6 +55,7 @@ border-radius:10px;background:#2563eb;color:#fff;margin:10px}a{display:block;mar
 
 async def main(lab):
     cam, enc = apri_camera(lab, FrameSize.VGA, 85, FrameSize.VGA)
+    lab.on('foto', lambda v: invia_foto(lab, cam, enc))   # foto via Internet
     try:
         if not await lab.wifi():
             return

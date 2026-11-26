@@ -311,6 +311,7 @@ async def timelapse(lab):
                     img = await foto()
                     if img:
                         TL.append((img, '%02d/%02d %02d:00' % (t[2], t[1], t[3])))
+                        getattr(lab, 'foto', lambda x: None)(img)   # anche su Internet
                         if len(TL) > 13:
                             TL.pop(0)
                 except Exception as e:
@@ -462,8 +463,15 @@ def on_pausa(v):
     salva()
 
 
+async def foto_internet(lab):
+    img = await foto()
+    if img:
+        getattr(lab, 'foto', lambda x: None)(img)
+
+
 async def main(lab):
     carica()
+    lab.on('foto', lambda v: foto_internet(lab))   # foto su richiesta via Internet
     lab.on('annaffiaA', on_annaffia(0))
     lab.on('annaffiaB', on_annaffia(1))
     lab.on('ferma', lambda v: ferma())

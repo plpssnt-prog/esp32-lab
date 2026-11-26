@@ -1,5 +1,5 @@
 // Service worker: l'app funziona anche offline (il firmware si scarica solo quando serve)
-const VERSION = 'esp32lab-v13';
+const VERSION = 'esp32lab-v14';
 const SHELL = [
   './',
   'board/main.py',
@@ -62,6 +62,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  if (new URL(req.url).pathname.startsWith('/api/')) return;   // ponte Internet: mai in cache
   e.respondWith(
     fetch(req).then((res) => {
       if (res.ok && !req.url.endsWith('.bin')) {

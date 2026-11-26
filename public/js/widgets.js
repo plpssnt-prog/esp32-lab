@@ -202,10 +202,57 @@ export function buildPanel(panel, ctx) {
           const url = i.web || (i.ip ? 'http://' + i.ip + '/' : null);
           if (url) { btn.href = url; btn.classList.remove('disabled'); hint.textContent = url + ' — telefono e scheda devono essere sulla stessa rete Wi-Fi.'; }
           else { btn.removeAttribute('href'); btn.classList.add('disabled'); hint.textContent = i.ssid ? 'In attesa del Wi-Fi… avvia il progetto.' : 'Prima imposta il Wi-Fi nella pagina Scheda.'; }
+          if (ctx.conn.kind === 'net') hint.textContent = 'La pagina della scheda funziona solo in casa, sulla stessa rete Wi-Fi. Da fuori usa il pannello qui.';
         };
         on('__info', upd);
         upd();
         el = card(w, btn, hint);
+        break;
+      }
+      case 'camera': {
+        const img = h('img', { class: 'camimg', alt: 'Ultima foto della scheda' });
+        const info = h('p', { class: 'hint' }, '');
+        const auto = h('input', { type: 'checkbox' });
+        let last = 0, busy = false, timer = null;
+        const net = ctx.net && ctx.net();
+        const url = (meta) => `/api/img?dev=${net.dev}&key=${net.key}${meta ? '&meta=1' : ''}&t=${Date.now()}`;
+        const refresh = async () => {
+          if (!net) return false;
+          try {
+            const r = await fetch(url(true));
+            const { ts } = await r.json();
+            if (ts && ts !== last) {
+              last = ts; img.src = url(false);
+              info.textContent = 'Foto delle ' + new Date(ts).toLocaleTimeString('it-IT');
+              return true;
+            }
+          } catch (e) { /* */ }
+          return false;
+        };
+        const shot = async () => {
+          if (busy || !net) return;
+          busy = true;
+          ctx.send(w.id, 1, true);
+          for (let i = 0; i < 14; i++) {
+            await new Promise((r) => setTimeout(r, 700));
+            if (await refresh()) break;
+          }
+          busy = false;
+        };
+        auto.addEventListener('change', () => {
+          clearInterval(timer);
+          if (auto.checked) { shot(); timer = setInterval(shot, w.every || 4000); }
+        });
+        cleanups.push(() => clearInterval(timer));
+        on('__img', () => refresh());
+        if (net) refresh();
+        el = card(w,
+          net ? img : null,
+          net ? info : h('p', { class: 'hint' }, 'Per vedere qui le foto, attiva Internet nella pagina Scheda.'),
+          net ? h('div', { class: 'btn-row' },
+            h('button', { class: 'btn', onclick: shot }, 'Scatta'),
+            h('label', { class: 'w-toggle' }, h('span', {}, 'Aggiorna da sola'), auto)) : null,
+        );
         break;
       }
       default:

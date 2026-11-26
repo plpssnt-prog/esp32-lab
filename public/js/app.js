@@ -9,6 +9,7 @@ const store = {
   get(k, d) { try { const v = JSON.parse(localStorage.getItem('lab:' + k)); return v ?? d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('lab:' + k, JSON.stringify(v)); } catch (e) { /* */ } },
 };
+const getNet = () => store.get('net', null);
 const byId = Object.fromEntries(PROJECTS.map((p) => [p.id, p]));
 let page = { panel: null, onMsg: null, onConsole: null, onInfo: null };
 
@@ -42,7 +43,7 @@ async function guard(fn) {
 // ---------------------------------------------------------------- connessione
 function connLabel() {
   if (!conn.connected) return 'Non collegata';
-  const via = conn.kind === 'ble' ? 'Bluetooth' : 'USB';
+  const via = ({ ble: 'Bluetooth', usb: 'USB', net: 'Internet' }[conn.kind] || '');
   if (!conn.info) return via + ' · runtime assente';
   return via + ' · ' + conn.info.name;
 }
@@ -64,6 +65,8 @@ function openConnect() {
       'Bluetooth', h('small', {}, 'senza fili · per usare i progetti')),
     h('button', { class: 'btn big ghost', disabled: support.serial || support.usb ? null : '', onclick: async () => { close(); await guard(() => conn.connectUSB()); } },
       'Cavo USB', h('small', {}, 'necessario la prima volta · da PC o dal telefono con cavo OTG')),
+    h('button', { class: 'btn big ghost', disabled: getNet() ? null : '', onclick: async () => { close(); await guard(() => conn.connectNet(getNet())); } },
+      'Internet', h('small', {}, getNet() ? 'da qualsiasi posto · la scheda deve avere Internet attivo' : 'prima attivalo nella pagina Scheda')),
     !support.ble ? h('p', { class: 'hint' }, 'Bluetooth web non disponibile in questo browser: usa Chrome.') : null,
     h('button', { class: 'btn ghost', onclick: close }, 'Annulla'),
   );
@@ -187,6 +190,7 @@ async function projectPage(id) {
 
   const panel = buildPanel(p.panel, {
     conn,
+    net: getNet,
     send: (id, v, nc) => {
       if (!conn.connected) return;
       const pr = nc ? conn.send({ t: 'c', c: id, v }) : conn.cmd(id, v);
@@ -201,6 +205,7 @@ async function projectPage(id) {
     else if (m.t === 'log') log(m.m);
     else if (m.t === 'err') log(m.m, 'err');
     else if (m.t === 'web') log('Pagina della scheda: ' + m.url, 'ok');
+    else if (m.t === 'img') panel.update('__img', m.ts);
     updStatus();
   };
   page.onConsole = (line) => log(line, 'muted');
@@ -312,10 +317,11 @@ async function boardPage() {
   const updInfo = () => {
     infoBox.innerHTML = '';
     const i = conn.info;
-    const rows = !conn.connected ? [['Stato', 'Non collegata']] : !i ? [['Stato', 'Collegata via ' + (conn.kind === 'ble' ? 'Bluetooth' : 'USB')], ['Runtime', 'non risponde (installalo al passo 2)']] : [
-      ['Nome', i.name], ['Collegata via', conn.kind === 'ble' ? 'Bluetooth' : 'USB'], ['Runtime', 'v' + i.ver],
+    const rows = !conn.connected ? [['Stato', 'Non collegata']] : !i ? [['Stato', 'Collegata via ' + ({ ble: 'Bluetooth', usb: 'USB', net: 'Internet' }[conn.kind] || '')], ['Runtime', conn.kind === 'net' ? 'la scheda non è collegata a Internet (è accesa? Internet attivo?)' : 'non risponde (installalo al passo 2)']] : [
+      ['Nome', i.name], ['Collegata via', ({ ble: 'Bluetooth', usb: 'USB', net: 'Internet' }[conn.kind] || '')], ['Runtime', 'v' + i.ver + (i.ver < '1.2' ? ' (aggiorna per usare Internet)' : '')],
       ['MicroPython', ((i.mp || '').split(';')[1] || i.mp || '').replace('MicroPython', '').trim().split(' on ')[0]], ['Fotocamera', i.cam ? 'supportata dal firmware' : 'non supportata'],
       ['Memoria libera', Math.round(i.mem / 1024) + ' KB'], ['Wi-Fi', i.ssid ? i.ssid + (i.ip ? ' · ' + i.ip : ' · non collegato') : 'non configurato'],
+      ['Internet', i.cloud ? (i.net ? 'attivo e collegato' : 'attivo, in collegamento…') : 'non attivo'],
       ['Progetto', conn.state && conn.state.app ? conn.state.app + (conn.state.run ? ' (in esecuzione)' : ' (fermo)') : 'nessuno'],
     ];
     infoBox.append(h('table', {}, rows.map(([k, v]) => h('tr', {}, h('th', {}, k), h('td', {}, v)))));
@@ -327,6 +333,13 @@ async function boardPage() {
   page.onMsg = (m) => { if (m.t === 'log') clog(m.m); else if (m.t === 'err') clog(m.m, 'err'); updInfo(); };
 
   const needInfo = () => { if (!conn.info) throw new Error('Collega la scheda con il runtime installato'); };
+  const netBox = h('p', { class: 'hint' });
+  const codeIn = h('input', { placeholder: 'codice:chiave', autocapitalize: 'off', autocomplete: 'off' });
+  const updNet = () => {
+    const n = getNet();
+    netBox.textContent = n ? 'Questo telefono ha il codice della scheda ' + n.dev + '.' : 'Su questo telefono Internet non è ancora configurato.';
+  };
+  updNet();
 
   main.append(
     h('h1', {}, 'La scheda'),
@@ -417,6 +430,53 @@ async function boardPage() {
       ),
     ),
     h('section', { class: 'card' },
+      h('h2', {}, '4 · Internet (comandi da fuori casa)'),
+      h('p', {}, 'La scheda si collega al ponte ESP32 Lab su Cloudflare: da qualsiasi posto puoi usare i pannelli dei progetti, caricare progetti e vedere le foto. Serve il Wi-Fi impostato (passo 3) e il runtime 1.2.'),
+      netBox,
+      h('div', { class: 'btn-row' },
+        h('button', { class: 'btn', onclick: () => guard(async () => {
+          needInfo();
+          if (!conn.info.ssid) throw new Error('Prima imposta il Wi-Fi (passo 3)');
+          if (conn.info.ver < '1.2') throw new Error('Aggiorna il runtime (passo 2) per usare Internet');
+          let net = getNet();
+          if (!net) {
+            const hex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
+            net = { dev: hex(6), key: hex(16) };
+            store.set('net', net);
+          }
+          await conn.send({ t: 'cloud', url: location.origin, dev: net.dev, key: net.key });
+          toast('Internet attivato: la scheda si sta collegando…');
+          await new Promise((r) => setTimeout(r, 6000));
+          await conn.hello(); updInfo(); updNet();
+        }) }, 'Attiva su questa scheda'),
+        h('button', { class: 'btn ghost', onclick: () => guard(async () => {
+          if (!getNet()) throw new Error('Internet non è attivo su questo telefono');
+          await conn.connectNet(getNet()); updInfo();
+        }) }, 'Collega via Internet'),
+        h('button', { class: 'btn ghost', onclick: () => guard(async () => {
+          needInfo();
+          await conn.send({ t: 'cloud', url: '' });
+          toast('Internet disattivato sulla scheda');
+          await conn.hello(); updInfo();
+        }) }, 'Disattiva'),
+      ),
+      h('details', {},
+        h('summary', {}, 'Usare un altro telefono o PC'),
+        h('p', { class: 'hint' }, 'Copia il codice di accoppiamento qui sotto e incollalo nella PWA dell’altro dispositivo. Chi ha il codice può comandare la scheda: non condividerlo.'),
+        h('div', { class: 'row' }, codeIn,
+          h('button', { class: 'btn ghost', onclick: () => {
+            const v = codeIn.value.trim().toLowerCase();
+            const m = v.match(/^([0-9a-f]{8,64})[:\s-]+([0-9a-f]{32,64})$/);
+            if (!m) { toast('Codice non valido', 'err'); return; }
+            store.set('net', { dev: m[1], key: m[2] }); updNet(); toast('Codice salvato: ora puoi collegarti via Internet');
+          } }, 'Salva')),
+        h('button', { class: 'btn ghost small', onclick: () => {
+          const n = getNet(); if (!n) { toast('Nessun codice su questo telefono', 'err'); return; }
+          navigator.clipboard.writeText(n.dev + ':' + n.key).then(() => toast('Codice copiato'));
+        } }, 'Copia il mio codice'),
+      ),
+    ),
+    h('section', { class: 'card' },
       h('h2', {}, 'Nome Bluetooth'),
       h('p', { class: 'hint' }, 'Deve iniziare con «ESP32». Utile se hai più schede.'),
       h('div', { class: 'row' }, bname, h('button', { class: 'btn ghost', onclick: () => guard(async () => {
@@ -501,6 +561,10 @@ function guidePage() {
         h('li', {}, 'Fai i collegamenti a scheda spenta, poi ricontrolla prima di alimentare.'),
         h('li', {}, 'Non usare i pin della fotocamera (GPIO4–18), della PSRAM (35–37) e della USB (19–20).'),
       ),
+    ),
+    sec('Comandare la scheda da fuori casa',
+      h('p', {}, 'Nella pagina Scheda, al passo 4, premi «Attiva su questa scheda»: la scheda si collega al ponte ESP32 Lab su Cloudflare e da quel momento puoi premere «Collega scheda» → «Internet» da qualsiasi posto, anche in 4G. Funzionano i pannelli di tutti i progetti, il caricamento dei progetti e le foto (riquadro «Foto» nei progetti con la fotocamera).'),
+      h('p', {}, 'Le pagine web della scheda (http://IP/) restano solo per casa. Il codice di accoppiamento è come una password: chi lo ha può comandare la scheda.'),
     ),
     sec('Perché la pagina della scheda si apre a parte',
       h('p', {}, 'La PWA è su Internet in https, la scheda nella tua rete di casa in http: per sicurezza il browser non permette di mischiarle. Per questo i progetti Wi-Fi e fotocamera aprono la pagina della scheda in una nuova scheda del browser, all’indirizzo http://IP-della-scheda/.'),
