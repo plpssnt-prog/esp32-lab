@@ -7,7 +7,7 @@
 import sys, gc, os, json, time, machine, binascii
 import asyncio
 
-VER = '1.2'
+VER = '1.3'
 CFG = 'lab.json'
 NUS = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E'
 NUS_TX = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'
@@ -386,9 +386,11 @@ class Lab:
             url = d.get('url', '')
             self.cfg['cloud'] = {'url': url, 'dev': d.get('dev', ''), 'key': d.get('key', '')}
             _save(self.cfg)
-            self.start_cloud()
             self.log('Internet ' + ('attivato' if url else 'disattivato'))
             self._info()
+            # il comando puo' arrivare proprio dal ponte Internet: il ponte si riavvia
+            # in un task separato, dopo aver spedito la risposta (niente 'can't cancel self')
+            asyncio.create_task(self._riavvia_cloud())
         elif t == 'reset':
             await asyncio.sleep_ms(200)
             machine.reset()
@@ -415,6 +417,10 @@ class Lab:
 
 
     # ---------- ponte Internet (WebSocket verso il Worker Cloudflare) ----------
+    async def _riavvia_cloud(self):
+        await asyncio.sleep_ms(500)
+        self.start_cloud()
+
     def start_cloud(self):
         if self.cloud_task:
             self.cloud_task.cancel()
