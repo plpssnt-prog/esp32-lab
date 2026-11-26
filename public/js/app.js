@@ -327,10 +327,32 @@ async function boardPage() {
     infoBox.append(h('table', {}, rows.map(([k, v]) => h('tr', {}, h('th', {}, k), h('td', {}, v)))));
     if (i && i.ssid && !ssid.value) ssid.value = i.ssid;
     if (i && !bname.value) bname.value = i.name;
+    updStati();
   };
   page.onInfo = updInfo;
   page.onConsole = (l) => clog(l);
   page.onMsg = (m) => { if (m.t === 'log') clog(m.m); else if (m.t === 'err') clog(m.m, 'err'); updInfo(); };
+
+  const stati = {};
+  const passo = (titolo, key, ...figli) => {
+    stati[key] = h('span', { class: 'stato' });
+    return h('details', { class: 'card passo' },
+      h('summary', {}, h('span', { class: 'ptit' }, titolo), stati[key]), ...figli);
+  };
+  const setStato = (key, testo, ok) => {
+    if (!stati[key]) return;
+    stati[key].textContent = testo || '';
+    stati[key].className = 'stato' + (ok === true ? ' ok' : ok === false ? ' no' : '');
+  };
+  const updStati = () => {
+    const i = conn.info;
+    if (!i) { ['fw', 'rt', 'wifi', 'net', 'nome'].forEach((k) => setStato(k, '')); return; }
+    setStato('fw', 'fatto', true);
+    setStato('rt', 'v' + i.ver, i.ver >= '1.3');
+    setStato('wifi', i.ssid ? (i.ip ? 'collegato' : 'non collegato') : 'da fare', !!(i.ssid && i.ip));
+    setStato('net', i.cloud ? (i.net || conn.kind === 'net' ? 'attivo' : 'in collegamento') : 'non attivo', i.cloud ? true : undefined);
+    setStato('nome', i.name);
+  };
 
   const needInfo = () => { if (!conn.info) throw new Error('Collega la scheda con il runtime installato'); };
   const netBox = h('p', { class: 'hint' });
@@ -350,12 +372,32 @@ async function boardPage() {
         h('button', { class: 'btn', onclick: () => guard(() => conn.connectBLE()) }, 'Bluetooth'),
         h('button', { class: 'btn ghost', onclick: () => guard(() => conn.connectUSB()) }, 'USB'),
         'usb' in navigator ? h('button', { class: 'btn ghost', onclick: () => guard(() => conn.connectUSB(true)) }, 'USB (WebUSB)') : null,
+        h('button', { class: 'btn ghost', onclick: () => guard(async () => {
+          if (!getNet()) throw new Error('Internet non è attivo su questo telefono (vedi «4 · Internet» qui sotto)');
+          await conn.connectNet(getNet()); updInfo();
+        }) }, 'Internet'),
         h('button', { class: 'btn ghost', onclick: () => guard(() => conn.disconnect()) }, 'Scollega'),
         h('button', { class: 'btn ghost', onclick: () => guard(async () => { await conn.hello(); updInfo(); }) }, 'Aggiorna'),
       ),
     ),
     h('section', { class: 'card' },
-      h('h2', {}, '1 · Installa MicroPython con fotocamera'),
+      h('h2', {}, 'Console'),
+      h('p', { class: 'hint' }, 'Messaggi della scheda. Con il cavo USB puoi anche eseguire comandi Python (il progetto viene interrotto e poi riavviato).'),
+      consoleBox,
+      h('div', { class: 'row' }, replIn, h('button', { class: 'btn ghost', onclick: () => guard(async () => {
+        if (conn.kind !== 'usb') throw new Error('I comandi Python funzionano solo via USB');
+        const code = replIn.value;
+        clog('>>> ' + code, 'muted');
+        try { const out = await conn.replRun(code); if (out) clog(out.trimEnd()); } catch (e) { clog(e.message, 'err'); }
+      }) }, 'Esegui')),
+      h('div', { class: 'btn-row' },
+        h('button', { class: 'btn ghost small', onclick: () => guard(async () => { needInfo(); await conn.send({ t: 'reset' }); toast('Riavvio della scheda…'); }) }, 'Riavvia la scheda'),
+        h('button', { class: 'btn ghost small', onclick: () => { consoleBox.textContent = ''; } }, 'Pulisci'),
+      ),
+    ),
+    h('h2', { class: 'sez' }, 'Installazione e impostazioni'),
+    h('p', { class: 'hint' }, 'Tocca una voce per aprire le istruzioni.'),
+    passo('1 · Installa MicroPython con fotocamera', 'fw',
       h('p', {}, 'Si fa una sola volta (e quando vuoi aggiornare). Firmware: ', BOARD.firmwareInfo, '.'),
       h('ol', {},
         h('li', {}, 'Usa Chrome, sul PC o sul telefono (con hub o adattatore USB-C OTG). Collega il cavo a una delle due porte USB-C della scheda: prima prova quella marcata «USB».'),
@@ -397,8 +439,7 @@ async function boardPage() {
       flashBar, flashLog,
       'serial' in navigator ? null : ('usb' in navigator ? h('p', { class: 'hint' }, 'Sul telefono si usa WebUSB: se non funziona, fai questo passo da Chrome su PC.') : h('p', { class: 'callout' }, 'Questo browser non può collegarsi via USB: usa Chrome su PC o su Android.')),
     ),
-    h('section', { class: 'card' },
-      h('h2', {}, '2 · Installa il runtime ESP32 Lab'),
+    passo('2 · Installa il runtime ESP32 Lab', 'rt',
       h('p', {}, 'È il programma fisso della scheda (main.py): attiva il Bluetooth, riceve i progetti e li esegue. Collega la scheda via USB (dopo il passo 1 va bene anche la porta «USB»), poi premi il pulsante.'),
       h('div', { class: 'btn-row' },
         h('button', { class: 'btn', onclick: () => guard(async () => {
@@ -413,8 +454,7 @@ async function boardPage() {
         }) }, conn.info ? 'Aggiorna il runtime' : 'Installa il runtime'),
       ),
     ),
-    h('section', { class: 'card' },
-      h('h2', {}, '3 · Wi-Fi (per i progetti web e la fotocamera)'),
+    passo('3 · Wi-Fi (per i progetti web e la fotocamera)', 'wifi',
       h('p', { class: 'hint' }, 'La scheda funziona solo con reti a 2,4 GHz. La password resta salvata solo sulla scheda.'),
       ssid, pw,
       h('div', { class: 'btn-row' },
@@ -429,8 +469,7 @@ async function boardPage() {
         h('button', { class: 'btn ghost', onclick: () => guard(async () => { needInfo(); await conn.send({ t: 'wifi', ssid: '', pw: '' }); await conn.hello(); updInfo(); }) }, 'Rimuovi Wi-Fi'),
       ),
     ),
-    h('section', { class: 'card' },
-      h('h2', {}, '4 · Internet (comandi da fuori casa)'),
+    passo('4 · Internet (comandi da fuori casa)', 'net',
       h('p', {}, 'La scheda si collega al ponte ESP32 Lab su Cloudflare: da qualsiasi posto puoi usare i pannelli dei progetti, caricare progetti e vedere le foto. Serve il Wi-Fi impostato (passo 3) e il runtime 1.2.'),
       netBox,
       h('div', { class: 'btn-row' },
@@ -476,8 +515,7 @@ async function boardPage() {
         } }, 'Copia il mio codice'),
       ),
     ),
-    h('section', { class: 'card' },
-      h('h2', {}, 'Nome Bluetooth'),
+    passo('Nome Bluetooth', 'nome',
       h('p', { class: 'hint' }, 'Deve iniziare con «ESP32». Utile se hai più schede.'),
       h('div', { class: 'row' }, bname, h('button', { class: 'btn ghost', onclick: () => guard(async () => {
         needInfo();
@@ -486,21 +524,6 @@ async function boardPage() {
         await conn.send({ t: 'name', v });
         toast('Nome salvato, la scheda si riavvia: ricollegala.');
       }) }, 'Salva')),
-    ),
-    h('section', { class: 'card' },
-      h('h2', {}, 'Console'),
-      h('p', { class: 'hint' }, 'Messaggi della scheda. Con il cavo USB puoi anche eseguire comandi Python (il progetto viene interrotto e poi riavviato).'),
-      consoleBox,
-      h('div', { class: 'row' }, replIn, h('button', { class: 'btn ghost', onclick: () => guard(async () => {
-        if (conn.kind !== 'usb') throw new Error('I comandi Python funzionano solo via USB');
-        const code = replIn.value;
-        clog('>>> ' + code, 'muted');
-        try { const out = await conn.replRun(code); if (out) clog(out.trimEnd()); } catch (e) { clog(e.message, 'err'); }
-      }) }, 'Esegui')),
-      h('div', { class: 'btn-row' },
-        h('button', { class: 'btn ghost small', onclick: () => guard(async () => { needInfo(); await conn.send({ t: 'reset' }); toast('Riavvio della scheda…'); }) }, 'Riavvia la scheda'),
-        h('button', { class: 'btn ghost small', onclick: () => { consoleBox.textContent = ''; } }, 'Pulisci'),
-      ),
     ),
   );
   updInfo();

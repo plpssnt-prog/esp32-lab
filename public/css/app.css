@@ -155,3 +155,15 @@ body.print main{max-width:900px}
 .diagram.drawing img{display:block;width:100%;height:auto;cursor:zoom-in}
 .camimg{display:block;width:100%;border-radius:10px;background:#e5e7eb;min-height:120px;margin-bottom:6px}
 .w-camera{grid-column:1/-1}
+details.passo{padding:0 16px}
+details.passo>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;margin:0 -16px;font-weight:700;font-size:1.02rem}
+details.passo>summary::-webkit-details-marker{display:none}
+details.passo>summary::after{content:'▾';color:var(--muted);margin-left:4px;transition:transform .15s}
+details.passo[open]>summary::after{transform:rotate(180deg)}
+details.passo>summary .ptit{flex:1}
+details.passo[open]{padding-bottom:12px}
+.stato{font-size:.78rem;font-weight:600;border-radius:999px;padding:2px 9px;background:#f3f4f6;color:var(--muted);white-space:nowrap}
+.stato:empty{display:none}
+.stato.ok{background:#dcfce7;color:#166534}
+.stato.no{background:#fef3c7;color:#92400e}
+h2.sez{font-size:1rem;color:var(--muted);margin:22px 4px 4px}
