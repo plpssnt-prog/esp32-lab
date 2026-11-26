@@ -392,6 +392,8 @@ export class Conn extends EventTarget {
         await this.send({ t: 'reset' });
         return true;
       }
+      if (this.kind === 'net') throw new Error('La scheda non risponde via Internet: aspetta un minuto e ricollegati, oppure usa Bluetooth/USB');
+      if (this.kind === 'ble') throw new Error('La scheda non risponde: premi RST sulla scheda e ricollegati');
       throw new Error('Per la prima installazione collega la scheda via USB');
     });
   }
