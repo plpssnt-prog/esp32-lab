@@ -7,7 +7,7 @@ h1{font-size:1.6rem;margin:.6rem 0}
 h2{font-size:1.1rem;margin:0 0 .6rem}
 h3{font-size:1rem;margin:0 0 .2rem}
 main{max-width:860px;margin:0 auto;padding:12px 14px}
-.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#fff;border-bottom:1px solid var(--line)}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;padding-top:calc(10px + max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)));background:#fff;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--ink);text-decoration:none;font-size:1.1rem}
 .conn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:.9rem;color:var(--ink);max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .conn::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:#d1d5db;margin-right:7px;vertical-align:1px}
