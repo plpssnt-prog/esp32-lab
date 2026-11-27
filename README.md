@@ -86,3 +86,16 @@ Worker Cloudflare collegato a questo repo (Workers → Create → Import a repos
 - La PWA è in https, la scheda in http sulla rete locale: le pagine Wi-Fi/fotocamera si aprono in una scheda separata (`http://IP/`).
 - USB dal telefono: Web Serial su Android 17+, altrimenti WebUSB con polyfill (porta USB nativa, classe CDC). Il flash del firmware richiede Web Serial.
 - Codice dei progetti scritto per la scheda Freenove ma non ancora provato sull'hardware: i pin sono nella pagina *Componenti*.
+
+## App Android (Capacitor)
+
+La cartella `app/` contiene l'app Android: apre il sito (quindi si aggiorna da sola come la PWA) e aggiunge
+- **Bluetooth nativo** (`@capacitor-community/bluetooth-le`): resta collegato, ricorda l'ultima scheda e si ricollega da solo;
+- **notifiche dalla scheda** (`@capacitor/push-notifications`, Firebase Cloud Messaging): nel progetto si usa `lab.notifica(titolo, testo)` (runtime 1.4).
+
+GitHub Actions (`.github/workflows/android.yml`) costruisce l'APK a ogni modifica di `app/` e lo pubblica nella release
+[`app-latest`](https://github.com/plpssnt-prog/esp32-lab/releases/download/app-latest/ESP32-Lab.apk). La chiave di firma
+`esp32lab-debug.keystore` è nel repo apposta, così ogni APK si installa sopra il precedente.
+
+Notifiche: serve `app/android/app/google-services.json` (progetto Firebase, pacchetto `dev.plpssnt.esp32lab`) e, nel Worker,
+il secret `FCM_SA` con il JSON del service account Firebase. Endpoint: `POST /api/push` (registra il telefono), `POST /api/push/prova`.
