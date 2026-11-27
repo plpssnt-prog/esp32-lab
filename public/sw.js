@@ -1,5 +1,5 @@
 // Service worker: l'app funziona anche offline (il firmware si scarica solo quando serve)
-const VERSION = 'esp32lab-v20';
+const VERSION = 'esp32lab-v21';
 const SHELL = [
   './',
   'board/main.py',
@@ -28,7 +28,12 @@ const SHELL = [
   'board/projects/p23_car.py',
   'board/projects/p24_autocar.py',
   'board/projects/p25_fpvcar.py',
+  'board/projects/x_allarme.py',
+  'board/projects/x_clima.py',
+  'board/projects/x_fughe.py',
+  'board/projects/x_ircomando.py',
   'board/projects/x_line.py',
+  'board/projects/x_luci.py',
   'board/projects/x_mpu6050.py',
   'board/projects/x_oled.py',
   'board/projects/x_pir_cam.py',

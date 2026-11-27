@@ -878,6 +878,171 @@ def d_line():
     filo(P['G', '36'], b['GND'], BLK, 'r', 'd', 10, 70, w=2.2)
 
 
+# ------------------------------------------------------------------ domotica
+def bme280(x, y):
+    m = modulo(x, y, 64, 52, 'BME280', ['VIN', 'GND', 'SCL', 'SDA'], '#7c3aed', step=13)
+    c.setFillColor(HexColor('#d1d5db')); c.rect(x + 26, y + 18, 12, 12, stroke=0, fill=1)
+    c.setFillColor(HexColor('#111827')); c.circle(x + 35, y + 21, 1.4, stroke=0, fill=1)
+    return m
+
+
+@disegno
+def d_clima():
+    P = breakout(BX, BY, usati=('21', '47'))
+    m = bme280(380, 340)
+    filo(P['3V3'][3], m['VIN'], RED, 'r', 'd', 60, 200)
+    filo(P['G', '20'], m['GND'], BLK, 'r', 'd', 70, 160)
+    filo(P['S', '47'], m['SCL'], GREEN, 'r', 'd', 90, 190)
+    filo(P['S', '21'], m['SDA'], BLUEW, 'r', 'd', 110, 200)
+    text(412, 420, 'lontano dalla scheda: scalda', 6.5, 'S', GREY, 'c')
+
+
+def contatto(x, y, nome):
+    """Contatto magnetico MC-38: corpo con due fili + magnete separato."""
+    c.setFillColor(HexColor('#f3f4f6')); c.setStrokeColor(HexColor('#9ca3af')); c.setLineWidth(1)
+    c.roundRect(x, y, 56, 16, 3, stroke=1, fill=1)
+    c.roundRect(x, y + 22, 56, 12, 3, stroke=1, fill=1)
+    text(x + 28, y + 25, 'magnete', 5.5, 'S', GREY, 'c')
+    text(x + 28, y + 42, nome, 7, 'SB', GREY, 'c')
+    return {'1': (x + 18, y), '2': (x + 38, y)}
+
+
+def _buzzer_volante(P, x, y):
+    c.setFillColor(HexColor('#1e1e1e')); c.circle(x, y, 14, stroke=0, fill=1)
+    c.setFillColor(HexColor('#3d3d3d')); c.circle(x, y, 4, stroke=0, fill=1)
+    text(x - 10, y + 10, '+', 7, 'SB', RED, 'c')
+    text(x, y + 20, 'buzzer passivo', 6.5, 'SB', GREY, 'c')
+    pp, pm = (x - 5, y - 26), (x + 5, y - 26)
+    c.setStrokeColor(HexColor('#9a9a9a')); c.setLineWidth(1.8)
+    c.line(x - 5, y - 13, *pp); c.line(x + 5, y - 13, *pm)
+    return pp, pm
+
+
+@disegno
+def d_allarme():
+    P = breakout(BX, BY, usati=('39', '40', '41', '14'), alim=True)
+    a = contatto(320, 440, 'porta')
+    b = contatto(420, 440, 'finestra')
+    filo(P['S', '39'], a['1'], GREEN, 'r', 'd', 60, 120)
+    filo(P['G', '39'], a['2'], BLK, 'r', 'd', 80, 110)
+    filo(P['S', '40'], b['1'], BLUEW, 'r', 'd', 120, 140)
+    filo(P['G', '40'], b['2'], BLK, 'r', 'd', 140, 130)
+    m = pir(410, 300)
+    filo(P['V', '41'], m['VCC'], RED, 'r', 'd', 50, 70)
+    filo(P['S', '41'], m['OUT'], YEL, 'r', 'd', 70, 80)
+    filo(P['G', '41'], m['GND'], BLK, 'r', 'd', 90, 90)
+    pp, pm = _buzzer_volante(P, 120, 340)
+    filo(P['S', '14'], pp, VIOLA, 'r', 'd', 40, 60)
+    filo(P['G', '14'], pm, BLK, 'r', 'd', 30, 70)
+    c.setStrokeColor(ORANGE); c.setLineWidth(2); c.circle(*P['CAM'], 16, stroke=1, fill=0)
+
+
+def alimentatore5v(x, y):
+    c.setFillColor(HexColor('#1f2937')); c.roundRect(x, y, 70, 34, 5, stroke=0, fill=1)
+    text(x + 35, y + 20, '5 V  3 A', 8, 'SB', white, 'c')
+    text(x + 35, y + 8, 'alimentatore', 5.5, 'S', HexColor('#cbd5e1'), 'c')
+    c.setFillColor(HexColor('#2563eb')); c.rect(x + 74, y + 4, 22, 26, stroke=0, fill=1)
+    text(x + 85, y + 22, '+', 7, 'SB', white, 'c'); text(x + 85, y + 8, '−', 7, 'SB', white, 'c')
+    return {'+': (x + 96, y + 22), '-': (x + 96, y + 10)}
+
+
+@disegno
+def d_luci():
+    P = breakout(BX, BY, usati=('21',))
+    # striscia LED
+    sx, sy = 300, 420
+    c.setFillColor(HexColor('#f8fafc')); c.setStrokeColor(HexColor('#cbd5e1')); c.setLineWidth(1)
+    c.rect(sx, sy, 205, 22, stroke=1, fill=1)
+    cols = ['#f59e0b', '#fbbf24', '#f97316', '#fb923c']
+    for i in range(8):
+        c.setFillColor(HexColor('#fde68a')); c.rect(sx + 34 + i * 21, sy + 5, 12, 12, stroke=0, fill=1)
+        c.setFillColor(HexColor(cols[i % 4])); c.circle(sx + 40 + i * 21, sy + 11, 3.5, stroke=0, fill=1)
+    for i, n in enumerate(['5V', 'DIN', 'GND']):
+        c.setFillColor(HexColor('#d4a100')); c.rect(sx + 4, sy + 16 - i * 7, 8, 5, stroke=0, fill=1)
+        text(sx + 22, sy + 16 - i * 7, n, 4.8, 'SB', GREY, 'c')
+    text(sx + 140, sy + 30, 'striscia WS2812B  →', 7, 'SB', GREY, 'c')
+    pin = {'5V': (sx + 4, sy + 18.5), 'DIN': (sx + 4, sy + 11.5), 'GND': (sx + 4, sy + 4.5)}
+    al = alimentatore5v(330, 300)
+    filo(al['+'], pin['5V'], RED, 'r', 'l', 40, 60)
+    filo(al['-'], pin['GND'], BLK, 'r', 'l', 30, 50)
+    wire_res(P['S', '21'], pin['DIN'], GREEN, (P['S', '21'][0] + 80, P['S', '21'][1]), (pin['DIN'][0] - 60, pin['DIN'][1]), B220)
+    filo(P['G', '20'], al['-'], BLK, 'r', 'd', 50, 90)
+    # condensatore tra 5V e GND
+    cx, cy = sx - 18, sy + 50
+    c.setFillColor(HexColor('#1e3a8a')); c.roundRect(cx - 8, cy, 16, 24, 3, stroke=0, fill=1)
+    c.setFillColor(HexColor('#cbd5e1')); c.rect(cx + 3, cy, 4, 24, stroke=0, fill=1)
+    text(cx, cy + 30, '1000 µF', 6, 'SB', GREY, 'c')
+    filo((cx - 4, cy), pin['5V'], RED, 'd', 'l', 10, 20, w=1.8)
+    filo((cx + 4, cy), pin['GND'], BLK, 'd', 'l', 14, 14, w=1.8)
+    text(420, 280, 'GND alimentatore = GND breakout', 6.5, 'S', GREY, 'c')
+
+
+def trasmettitore_ir(x, y):
+    m = modulo(x, y, 54, 40, 'IR TX', ['S', '+', '−'], '#111827', step=14)
+    c.setFillColor(HexColor('#a5b4fc')); c.circle(x + 27, y + 46, 7, stroke=0, fill=1)
+    c.rect(x + 20, y + 38, 14, 8, stroke=0, fill=1)
+    return m
+
+
+@disegno
+def d_ircomando():
+    P = breakout(BX, BY, usati=('38', '42'))
+    m = modulo(320, 360, 70, 50, 'IR RX', ['G', 'R', 'Y'], '#111827', step=16)
+    c.setFillColor(HexColor('#374151')); c.circle(355, 390, 9, stroke=0, fill=1)
+    filo(P['G', '36'], m['G'], BLK, 'r', 'd', 60, 70)
+    filo(P['3V3'][3], m['R'], RED, 'r', 'd', 50, 200)
+    filo(P['S', '38'], m['Y'], GREEN, 'r', 'd', 80, 90)
+    t = trasmettitore_ir(430, 360)
+    filo(P['S', '42'], t['S'], VIOLA, 'r', 'd', 120, 130)
+    filo(P['G', '42'], t['−'], BLK, 'r', 'd', 150, 140)
+    text(355, 440, 'ricevitore (impara)', 6.5, 'SB', GREY, 'c')
+    text(457, 440, 'trasmettitore (invia)', 6.5, 'SB', GREY, 'c')
+
+
+def sensore_acqua(x, y):
+    c.setFillColor(HexColor('#b91c1c')); c.roundRect(x, y, 36, 90, 3, stroke=0, fill=1)
+    c.setFillColor(HexColor('#e5c07b'))
+    for i in range(7):
+        c.rect(x + 6 + i * 4, y + 30, 1.8, 54, stroke=0, fill=1)
+    pins = {}
+    for i, n in enumerate(['S', '+', '–']):
+        px = x + 6 + i * 12
+        c.setStrokeColor(HexColor('#a0a0a0')); c.setLineWidth(1.8); c.line(px, y, px, y - 12)
+        text(px, y + 4, n, 6, 'SB', white, 'c')
+        pins[n] = (px, y - 12)
+    text(x + 18, y + 96, 'sensore acqua', 6.5, 'SB', GREY, 'c')
+    return pins
+
+
+def mq2(x, y):
+    m = modulo(x, y, 70, 56, 'MQ-2', ['VCC', 'GND', 'DO', 'AO'], '#1d4ed8', step=13)
+    c.setFillColor(HexColor('#9ca3af')); c.circle(x + 35, y + 72, 16, stroke=0, fill=1)
+    c.setFillColor(HexColor('#6b7280'))
+    for i in range(-2, 3):
+        for j in range(-2, 3):
+            if i * i + j * j < 6:
+                c.circle(x + 35 + i * 5, y + 72 + j * 5, 1.2, stroke=0, fill=1)
+    return m
+
+
+@disegno
+def d_fughe():
+    P = breakout(BX, BY, usati=('1', '42', '3', '14'), alim=True)
+    w = sensore_acqua(440, 380)
+    filo(P['S', '1'], w['S'], CYAN, 'r', 'd', 80, 160)
+    filo(P['S', '42'], w['+'], RED, 'r', 'd', 100, 150)
+    filo(P['G', '42'], w['–'], BLK, 'r', 'd', 120, 140)
+    m = mq2(30, 360)
+    filo(m['VCC'], P['V', '3'], RED, 'd', 'l', 60, 40)
+    filo(m['GND'], P['G', '3'], BLK, 'd', 'l', 50, 30)
+    wire_res(m['AO'], P['S', '3'], YEL, (m['AO'][0], 300), (P['S', '3'][0] - 60, P['S', '3'][1]), B1K)
+    t3, g = P['T', '3'], P['GNDb'][0]
+    wire_res(t3, g, BLK, (t3[0] - 8, t3[1] - 50), (g[0] - 8, g[1] + 60), B2K)
+    text(150, 500, 'AO → 1 kΩ → GPIO3 · dal morsetto di GPIO3: 2 kΩ → GND', 6.5, 'S', GREY, 'c')
+    pp, pm = _buzzer_volante(P, 200, 340)
+    filo(P['S', '14'], pp, VIOLA, 'r', 'd', 40, 60)
+    filo(P['G', '14'], pm, BLK, 'r', 'd', 30, 70)
+
 def disegna(pid, top, bottom, x0=40, width=515):
     """Disegna il progetto nel riquadro; True se esiste un disegno dedicato."""
     fn = D.get(pid)
