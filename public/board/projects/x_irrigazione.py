@@ -207,6 +207,7 @@ async def irriga(lab):
         z = CFG['zone'][i]
         if not acqua_ok():
             evento(lab, '%s: serbatoio vuoto, non irrigo' % z['nome'])
+            getattr(lab, 'notifica', lambda *a: None)('Serbatoio vuoto', '%s: non posso irrigare, riempi il serbatoio' % z['nome'])
             continue
         S['stop'] = False
         POMPA[i].on()

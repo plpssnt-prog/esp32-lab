@@ -167,3 +167,5 @@ details.passo[open]{padding-bottom:12px}
 .stato.ok{background:#dcfce7;color:#166534}
 .stato.no{background:#fef3c7;color:#92400e}
 h2.sez{font-size:1rem;color:var(--muted);margin:22px 4px 4px}
+.notif{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+.notif h3{font-size:1rem;margin:.6rem 0 .2rem}

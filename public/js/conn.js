@@ -5,6 +5,8 @@ const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // scriviamo qui
 const NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notifiche dalla scheda
 
+import { isApp, ble as nble } from './native.js';
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const enc = new TextEncoder();
 
@@ -15,7 +17,7 @@ function b64(bytes) {
 }
 
 export const support = {
-  ble: 'bluetooth' in navigator,
+  ble: 'bluetooth' in navigator || isApp,
   serial: 'serial' in navigator,
   usb: 'usb' in navigator,
 };
@@ -41,6 +43,7 @@ export class Conn extends EventTarget {
 
   // ---------------- Bluetooth ----------------
   async connectBLE() {
+    if (isApp) return this._connectBLEApp();
     if (!support.ble) throw new Error('Questo browser non supporta il Bluetooth web. Usa Chrome su Android o PC.');
     const dev = await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: 'ESP32' }],
@@ -64,7 +67,59 @@ export class Conn extends EventTarget {
     await this.hello();
   }
 
+  // ---- Bluetooth nativo dell'app Android: resta collegato e si ricollega da solo ----
+  async _connectBLEApp(deviceId, nome) {
+    if (!deviceId) {
+      const d = await nble.scegli(NUS);
+      deviceId = d.deviceId; nome = d.name;
+    }
+    this._autoBle = false;
+    this.emit('status', { text: 'Collegamento a ' + (nome || 'ESP32') + '…' });
+    await nble.collega(deviceId, () => this._bleAppPersa(deviceId, nome));
+    const dec = new TextDecoder();
+    await nble.notifiche(deviceId, NUS, NUS_TX, (bytes) => this._onText(dec.decode(bytes, { stream: true }), 'ble'));
+    this._nat = deviceId;
+    this._natMtu = await nble.mtu(deviceId);
+    try { localStorage.setItem('lab:ble', JSON.stringify({ id: deviceId, name: nome || '' })); } catch (e) { /* */ }
+    this.kind = 'ble';
+    this.devName = nome;
+    this._autoBle = true;
+    this.emit('status', { text: 'Collegato via Bluetooth' });
+    await this.hello();
+  }
+
+  _bleAppPersa(deviceId, nome) {
+    if (this.kind === 'ble' && this._nat === deviceId) this._closed('Bluetooth perso: ricollegamento…');
+    if (this._autoBle) this._ricollegaBLE(deviceId, nome);
+  }
+
+  async _ricollegaBLE(deviceId, nome) {
+    if (this._ricollego) return;
+    this._ricollego = true;
+    try {
+      for (let i = 0; this._autoBle && !this.kind; i++) {
+        await sleep(i === 0 ? 1500 : 5000);
+        if (!this._autoBle || this.kind) break;
+        try { await this._connectBLEApp(deviceId, nome); break; } catch (e) { /* scheda spenta o lontana: riprovo */ }
+      }
+    } finally { this._ricollego = false; }
+  }
+
+  // all'apertura dell'app: ricollega l'ultima scheda usata
+  async riprendiBLE() {
+    if (!isApp || this.kind) return false;
+    let last = null;
+    try { last = JSON.parse(localStorage.getItem('lab:ble') || 'null'); } catch (e) { /* */ }
+    if (!last || !last.id) return false;
+    this._autoBle = true;
+    try { await this._connectBLEApp(last.id, last.name); return true; } catch (e) {
+      this._ricollegaBLE(last.id, last.name);
+      return false;
+    }
+  }
+
   _bleChunk() {
+    if (this._nat && this._natMtu) return Math.max(20, Math.min(240, this._natMtu - 3));
     const m = this.info && this.info.mtu ? this.info.mtu : 23;
     return Math.max(20, Math.min(240, m - 3));
   }
@@ -73,12 +128,14 @@ export class Conn extends EventTarget {
     const bytes = enc.encode(str);
     const n = this._bleChunk();
     for (let i = 0; i < bytes.length; i += n) {
-      await this._rx.writeValueWithResponse(bytes.slice(i, i + n));
+      if (this._nat) await nble.scrivi(this._nat, NUS, NUS_RX, bytes.slice(i, i + n));
+      else await this._rx.writeValueWithResponse(bytes.slice(i, i + n));
     }
   }
 
   // ---------------- Internet (ponte Worker) ----------------
   async connectNet(net) {
+    this._autoBle = false;
     if (!net || !net.dev || !net.key) throw new Error('Internet non configurato: attivalo nella pagina Scheda');
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${proto}//${location.host}/api/ws?role=app&dev=${net.dev}&key=${net.key}`);
@@ -97,6 +154,7 @@ export class Conn extends EventTarget {
 
   // ---------------- USB ----------------
   async connectUSB(webusb = false) {
+    this._autoBle = false;
     let port;
     // Su Android Web Serial non vede il chip CH343 della porta UART: usiamo WebUSB
     if (support.usb && /Android/i.test(navigator.userAgent)) webusb = true;
@@ -155,7 +213,8 @@ export class Conn extends EventTarget {
     const k = this.kind;
     this.kind = null;
     try {
-      if (k === 'ble' && this._dev && this._dev.gatt.connected) this._dev.gatt.disconnect();
+      if (k === 'ble' && this._nat) { this._autoBle = false; await nble.scollega(this._nat); }
+      else if (k === 'ble' && this._dev && this._dev.gatt.connected) this._dev.gatt.disconnect();
       if (k === 'net' && this._ws) this._ws.close();
       if (k === 'usb' && this._port) {
         try { await this._reader.cancel(); } catch (e) { /* */ }
@@ -168,6 +227,7 @@ export class Conn extends EventTarget {
 
   _closed(text) {
     this.kind = null;
+    this._nat = null;
     this._port = null;
     this.info = null;
     this.state = null;

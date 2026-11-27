@@ -1,5 +1,6 @@
 import { PROJECTS, LEVELS, PARTS, PINMAP, BOARD } from './projects.js';
 import { Conn, support } from './conn.js';
+import { isApp, hasPush, APK_URL, attivaNotifiche, provaNotifica } from './native.js';
 import { buildPanel, h } from './widgets.js';
 import { wiringSVG } from './diagram.js';
 
@@ -348,10 +349,31 @@ async function boardPage() {
     const i = conn.info;
     if (!i) { ['fw', 'rt', 'wifi', 'net', 'nome'].forEach((k) => setStato(k, '')); return; }
     setStato('fw', 'fatto', true);
-    setStato('rt', 'v' + i.ver, i.ver >= '1.3');
+    setStato('rt', 'v' + i.ver, i.ver >= '1.4');
     setStato('wifi', i.ssid ? (i.ip ? 'collegato' : 'non collegato') : 'da fare', !!(i.ssid && i.ip));
     setStato('net', i.cloud ? (i.net || conn.kind === 'net' ? 'attivo' : 'in collegamento') : 'non attivo', i.cloud ? true : undefined);
     setStato('nome', i.name);
+  };
+
+  const notifBox = () => {
+    if (!isApp) {
+      return h('p', { class: 'hint' }, 'Le notifiche dalla scheda (es. movimento rilevato) arrivano con l’app Android ESP32 Lab. ',
+        /Android/i.test(navigator.userAgent) ? h('a', { href: APK_URL }, 'Scarica l’app') : null);
+    }
+    const st = h('span', { class: 'hint' }, localStorage.getItem('lab:push') ? ' Attive su questo telefono.' : '');
+    return h('div', { class: 'notif' },
+      h('h3', {}, 'Notifiche su questo telefono'),
+      h('p', { class: 'hint' }, 'La scheda ti avvisa anche con l’app chiusa (es. movimento rilevato, terreno secco). Serve Internet attivo sulla scheda.'),
+      h('div', { class: 'btn-row' },
+        h('button', { class: 'btn ghost', onclick: () => guard(async () => {
+          const net = getNet(); if (!net) throw new Error('Prima attiva Internet su questa scheda');
+          await attivaNotifiche(net); st.textContent = ' Attive su questo telefono.'; toast('Notifiche attivate', 'ok');
+        }) }, hasPush ? 'Attiva notifiche' : 'Notifiche non disponibili'),
+        h('button', { class: 'btn ghost small', onclick: () => guard(async () => {
+          const net = getNet(); if (!net) throw new Error('Prima attiva Internet su questa scheda');
+          await provaNotifica(net); toast('Notifica di prova inviata');
+        }) }, 'Prova'),
+        st));
   };
 
   const needInfo = () => { if (!conn.info) throw new Error('Collega la scheda con il runtime installato'); };
@@ -499,6 +521,7 @@ async function boardPage() {
           await conn.hello(); updInfo();
         }) }, 'Disattiva'),
       ),
+      notifBox(),
       h('details', {},
         h('summary', {}, 'Usare un altro telefono o PC'),
         h('p', { class: 'hint' }, 'Copia il codice di accoppiamento qui sotto e incollalo nella PWA dell’altro dispositivo. Chi ha il codice può comandare la scheda: non condividerlo.'),
@@ -572,6 +595,16 @@ function guidePage() {
     sec('Come funziona',
       h('p', {}, 'Sulla scheda c’è MicroPython, un Python per microcontrollori. Sopra installi una volta il runtime ESP32 Lab: è lui che riceve i progetti dal telefono (via Bluetooth o USB), li salva come app.py e li esegue. Il progetto resta sulla scheda e riparte anche se la alimenti senza telefono.'),
       h('p', {}, 'Ogni progetto parla con il pannello di controllo della PWA: i cursori e i pulsanti inviano comandi, la scheda risponde con i valori dei sensori.'),
+    ),
+    sec('App Android',
+      h('p', {}, 'Oltre alla PWA c’è l’app Android ESP32 Lab: stesse pagine (si aggiornano da sole), più Bluetooth nativo che resta collegato e si ricollega da solo alla scheda, e le notifiche dalla scheda anche con l’app chiusa.'),
+      h('ol', {},
+        h('li', {}, 'Dal telefono Android scarica ', h('a', { href: APK_URL }, 'ESP32-Lab.apk'), '.'),
+        h('li', {}, 'Aprilo dalle notifiche o da File › Download; se Android lo chiede, consenti a Chrome di installare app sconosciute.'),
+        h('li', {}, 'Nell’app: Collega scheda › Bluetooth la prima volta; poi si ricollega da sola ogni volta che la apri.'),
+        h('li', {}, 'Per le notifiche: pagina Scheda › 4 · Internet › «Attiva notifiche».'),
+      ),
+      h('p', { class: 'hint' }, 'Installare MicroPython via USB (passo 1) si fa ancora da Chrome. Per aggiornare l’app basta scaricare di nuovo l’APK e installarlo sopra.'),
     ),
     sec('Collegare il telefono via USB',
       h('p', {}, 'Serve un cavo o adattatore USB-C ↔ USB-C (OTG). Usa la porta «USB» della scheda. Se Chrome non mostra la scheda, la connessione USB dal telefono non è disponibile: usa il PC per i passi 1 e 2, poi il Bluetooth.'),
@@ -730,4 +763,10 @@ window.addEventListener('hashchange', route);
 route();
 renderHeader();
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+const inApp = /ESP32LabApp/.test(navigator.userAgent);
+if ('serviceWorker' in navigator) {
+  // nell'app Android il service worker impedirebbe al ponte nativo di caricarsi
+  if (inApp) navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+  else navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+if (isApp) conn.riprendiBLE().catch(() => {});

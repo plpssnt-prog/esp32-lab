@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ESP32 Lab</string>
+    <string name="title_activity_main">ESP32 Lab</string>
+    <string name="package_name">dev.plpssnt.esp32lab</string>
+    <string name="custom_url_scheme">dev.plpssnt.esp32lab</string>
+</resources>

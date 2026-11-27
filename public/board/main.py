@@ -7,7 +7,7 @@
 import sys, gc, os, json, time, machine, binascii
 import asyncio
 
-VER = '1.3'
+VER = '1.4'
 CFG = 'lab.json'
 NUS = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E'
 NUS_TX = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'
@@ -153,6 +153,14 @@ class Lab:
         if not self.usb:
             print(m)
         self._out({'t': 'log', 'm': m})
+
+    def notifica(self, titolo, testo=''):
+        """Notifica sul telefono (app Android ESP32 Lab), anche con l'app chiusa. Serve Internet attivo."""
+        if not self.ws_ok:
+            return False
+        s = json.dumps({'t': 'notify', 'title': str(titolo)[:80], 'body': str(testo)[:300]})
+        self.net_q.append((1, s.encode()))
+        return True
 
     def foto(self, jpeg):
         """Invia una foto JPEG al ponte Internet (la vedi nella PWA anche fuori casa)."""

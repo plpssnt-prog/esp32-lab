@@ -80,6 +80,7 @@ async def main(lab):
         lab.log('Attendi ~30 s: il PIR si stabilizza dopo l\'accensione')
         prima = 0
         n = 0
+        avviso = None      # ultima notifica (al massimo una al minuto)
         while True:
             m = pir.value()
             lab.send('movimento', m)
@@ -93,6 +94,10 @@ async def main(lab):
                     foto.pop(0)
                 lab.send('allarmi', n)
                 lab.log('Movimento rilevato! Foto', n)
+                if avviso is None or time.ticks_diff(time.ticks_ms(), avviso) > 60000:
+                    avviso = time.ticks_ms()
+                    # notifica sull'app Android (runtime 1.4); la foto la vedi nel pannello del progetto
+                    getattr(lab, 'notifica', lambda *a: None)('Movimento rilevato', 'Allarme %d: apri ESP32 Lab per vedere la foto' % n)
                 np[0] = (80, 0, 0)
                 np.write()
             elif not m:

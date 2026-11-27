@@ -1,0 +1,22 @@
+{
+  "appId": "dev.plpssnt.esp32lab",
+  "appName": "ESP32 Lab",
+  "webDir": "www",
+  "server": {
+    "url": "https://esp32-lab.pl-pssnt.workers.dev",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "appendUserAgent": "ESP32LabApp/1"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}
