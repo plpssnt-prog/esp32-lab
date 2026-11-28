@@ -1,6 +1,6 @@
 # ESP32 Lab
 
-PWA (tema chiaro, in italiano) con **37 progetti MicroPython** per ESP32-S3, dal LED che lampeggia alla macchinina con telecamera, alla domotica (clima, antifurto, luci, telecomando IR, fughe di acqua e gas, cucina sicura con orologio, gas, fornello e telecamera) e all’irrigazione del terrazzo a energia solare. Dal telefono scegli il progetto, vedi componenti e collegamenti, carichi il codice sulla scheda (Bluetooth o USB) e lo comandi dal pannello di controllo.
+PWA (tema chiaro, in italiano) con **38 progetti MicroPython** per ESP32-S3, dal LED che lampeggia alla macchinina con telecamera, alla domotica (clima, antifurto, luci, telecomando IR, fughe di acqua e gas, cucina sicura con orologio, gas, fornello e telecamera, anche a batteria) e all’irrigazione del terrazzo a energia solare. Dal telefono scegli il progetto, vedi componenti e collegamenti, carichi il codice sulla scheda (Bluetooth o USB) e lo comandi dal pannello di controllo.
 
 Scheda di riferimento: **Freenove ESP32-S3 WROOM CAM** (N8R8, fotocamera OV2640/OV3660), con i componenti del kit Elegoo UNO R3 Super Starter più alcuni componenti consigliati.
 
@@ -50,6 +50,7 @@ Scheda → PWA: `info`, `state`, `k {k,v}`, `log`, `err`, `ack`, `ip`, `web`. Vi
   ricavato dal token) e dà un link `t.me/<bot>?start=<dev>-<codice>` valido 7 giorni. Chi lo apre riceve gli allarmi.
 - Ogni notifica della scheda (`{"t":"notify",…}`) va anche su Telegram; con `"foto":1` segue l'ultima foto della scheda.
 - Comandi nel bot: `/foto` (scatta e manda una foto), `/stato` (ultimo `riepilogo` inviato dalla scheda), `/stop`.
+- Battito: se la scheda manda `veglia` (minuti), il Durable Object avvisa (app e Telegram) quando non riceve `riepilogo` per quel tempo e nessuna scheda è collegata; `veglia` 0 lo spegne.
 - Endpoint: `POST /api/tg/invito`, `GET /api/tg/persone`, `POST /api/tg/rimuovi`.
 
 ## Struttura

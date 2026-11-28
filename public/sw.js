@@ -1,5 +1,5 @@
 // Service worker: l'app funziona anche offline (il firmware si scarica solo quando serve)
-const VERSION = 'esp32lab-v22';
+const VERSION = 'esp32lab-v23';
 const SHELL = [
   './',
   'board/main.py',
@@ -31,6 +31,7 @@ const SHELL = [
   'board/projects/x_allarme.py',
   'board/projects/x_clima.py',
   'board/projects/x_cucina.py',
+  'board/projects/x_cucina_batt.py',
   'board/projects/x_fughe.py',
   'board/projects/x_ircomando.py',
   'board/projects/x_line.py',

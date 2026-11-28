@@ -181,6 +181,30 @@ export class Relay extends DurableObject {
 
   async tgChats() { return (await this.ctx.storage.get('tgchats')) || []; }
 
+  // «veglia»: la scheda a batteria si fa sentire ogni tot minuti; se smette, avviso tutti
+  async contatto() {
+    const veglia = (await this.ctx.storage.get('veglia')) || 0;
+    if (!veglia) return;
+    await this.ctx.storage.put('contatto', Date.now());
+    if (await this.ctx.storage.get('vegliaAvvisata')) {
+      await this.ctx.storage.delete('vegliaAvvisata');
+      await this.notifica('Cucina: la scheda è di nuovo collegata', (await this.ctx.storage.get('riepilogo')) || '', true);
+    }
+    await this.ctx.storage.setAlarm(Date.now() + veglia * 60000);
+  }
+
+  async alarm() {
+    const veglia = (await this.ctx.storage.get('veglia')) || 0;
+    if (!veglia) return;
+    const min = Math.round((Date.now() - ((await this.ctx.storage.get('contatto')) || 0)) / 60000);
+    if (min < veglia || this.boards().length) {   // collegata adesso: nessun problema
+      await this.ctx.storage.setAlarm(Date.now() + Math.max(5, veglia - min) * 60000); return;
+    }
+    await this.ctx.storage.put('vegliaAvvisata', true);
+    await this.notifica('Cucina: la scheda non si fa sentire', `Nessun contatto da ${min} minuti: batteria scarica, scheda spenta o Wi-Fi assente?`, true);
+    await this.ctx.storage.setAlarm(Date.now() + 6 * 3600000);     // ripeto ogni 6 ore
+  }
+
   // richieste interne: dal webhook di Telegram (mai da Internet direttamente)
   async interna(path, d) {
     if (path === '/tg/indice') {           // solo nell'oggetto «__telegram__»: chat -> scheda
@@ -292,12 +316,13 @@ export class Relay extends DurableObject {
         return;
       }
       this.toApps(msg);
-      if (msg.includes('notify') || msg.includes('"riepilogo"')) {
+      if (msg.includes('notify') || msg.includes('"riepilogo"') || msg.includes('"veglia"')) {
         for (const riga of msg.split('\n')) {
           try {
             const m = JSON.parse(riga);
             if (m.t === 'notify') await this.notifica(String(m.title || 'ESP32 Lab').slice(0, 80), String(m.body || '').slice(0, 300), false, !!m.foto);
-            else if (m.t === 'k' && m.k === 'riepilogo') await this.ctx.storage.put('riepilogo', String(m.v).slice(0, 500));
+            else if (m.t === 'k' && m.k === 'riepilogo') { await this.ctx.storage.put('riepilogo', String(m.v).slice(0, 500)); await this.contatto(); }
+            else if (m.t === 'k' && m.k === 'veglia') { await this.ctx.storage.put('veglia', Math.max(0, Number(m.v) || 0)); await this.contatto(); }
           } catch (e) { /* riga non JSON */ }
         }
       }
