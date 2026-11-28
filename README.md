@@ -1,6 +1,6 @@
 # ESP32 Lab
 
-PWA (tema chiaro, in italiano) con **36 progetti MicroPython** per ESP32-S3, dal LED che lampeggia alla macchinina con telecamera, alla domotica (clima, antifurto, luci, telecomando IR, fughe di acqua e gas) e all’irrigazione del terrazzo a energia solare. Dal telefono scegli il progetto, vedi componenti e collegamenti, carichi il codice sulla scheda (Bluetooth o USB) e lo comandi dal pannello di controllo.
+PWA (tema chiaro, in italiano) con **37 progetti MicroPython** per ESP32-S3, dal LED che lampeggia alla macchinina con telecamera, alla domotica (clima, antifurto, luci, telecomando IR, fughe di acqua e gas, cucina sicura con orologio, gas, fornello e telecamera) e all’irrigazione del terrazzo a energia solare. Dal telefono scegli il progetto, vedi componenti e collegamenti, carichi il codice sulla scheda (Bluetooth o USB) e lo comandi dal pannello di controllo.
 
 Scheda di riferimento: **Freenove ESP32-S3 WROOM CAM** (N8R8, fotocamera OV2640/OV3660), con i componenti del kit Elegoo UNO R3 Super Starter più alcuni componenti consigliati.
 
@@ -42,6 +42,15 @@ Scheda → PWA: `info`, `state`, `k {k,v}`, `log`, `err`, `ack`, `ip`, `web`. Vi
 - Il primo collegamento registra l'hash SHA-256 della chiave; poi una chiave diversa riceve 403.
 - `lab.foto(jpeg)` manda una foto (frame binario): l'ultima resta in `/api/img`, `/api/img?meta=1` dà l'ora dello scatto.
 - Il codice `dev:key` si genera nella pagina Scheda (passo 4) e si può copiare su altri telefoni.
+
+### Allarmi su Telegram (familiari)
+- Una volta sola: crea un bot con @BotFather su Telegram e salva il token come secret `TG_TOKEN` del Worker
+  (dashboard Cloudflare › Workers › esp32-lab › Settings › Variables and Secrets).
+- Pagina Scheda › 4 · Internet › «Crea link di invito»: il Worker imposta da solo il webhook `/tg` (protetto da un segreto
+  ricavato dal token) e dà un link `t.me/<bot>?start=<dev>-<codice>` valido 7 giorni. Chi lo apre riceve gli allarmi.
+- Ogni notifica della scheda (`{"t":"notify",…}`) va anche su Telegram; con `"foto":1` segue l'ultima foto della scheda.
+- Comandi nel bot: `/foto` (scatta e manda una foto), `/stato` (ultimo `riepilogo` inviato dalla scheda), `/stop`.
+- Endpoint: `POST /api/tg/invito`, `GET /api/tg/persone`, `POST /api/tg/rimuovi`.
 
 ## Struttura
 

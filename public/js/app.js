@@ -376,6 +376,44 @@ async function boardPage() {
         st));
   };
 
+  // Telegram: allarmi anche ad altre persone (familiari), su Android e iPhone
+  const tgBox = () => {
+    const elenco = h('ul', { class: 'tg-lista' });
+    const linkBox = h('div', {});
+    const api = async (path, body) => {
+      const net = getNet(); if (!net) throw new Error('Prima attiva Internet su questa scheda');
+      const r = await fetch(`/api/tg/${path}?dev=${net.dev}&key=${net.key}`, body ? { method: 'POST', body: JSON.stringify(body) } : {});
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Errore del server');
+      return j;
+    };
+    const mostra = (persone) => {
+      elenco.replaceChildren(...(persone.length ? persone.map((p) => h('li', {}, p.nome + ' ',
+        h('button', { class: 'btn ghost small', onclick: () => guard(async () => {
+          if (!confirm('Togliere ' + p.nome + ' dagli allarmi?')) return;
+          mostra((await api('rimuovi', { chat: p.chat })).persone);
+        }) }, 'Togli'))) : [h('li', { class: 'hint' }, 'Ancora nessuno.')]));
+    };
+    if (getNet()) api('persone').then((j) => mostra(j.persone)).catch(() => {});
+    return h('div', { class: 'notif' },
+      h('h3', {}, 'Allarmi su Telegram'),
+      h('p', { class: 'hint' }, 'Per avvisare anche altre persone, su Android o iPhone: crea un link e mandalo. Chi lo apre in Telegram riceve gli allarmi con la foto e può chiedere /foto e /stato.'),
+      elenco,
+      h('div', { class: 'btn-row' },
+        h('button', { class: 'btn ghost', onclick: () => guard(async () => {
+          const j = await api('invito', { nome: (conn.info && conn.info.name) || '' });
+          mostra(j.persone);
+          const testo = 'Apri questo link in Telegram per ricevere gli allarmi: ' + j.link;
+          linkBox.replaceChildren(h('p', { class: 'hint' }, 'Link valido 7 giorni, per tutte le persone che vuoi:'),
+            h('input', { value: j.link, readonly: '', onclick: (e) => e.target.select() }),
+            h('div', { class: 'btn-row' },
+              navigator.share ? h('button', { class: 'btn small', onclick: () => navigator.share({ text: testo }).catch(() => {}) }, 'Condividi') : null,
+              h('button', { class: 'btn ghost small', onclick: () => navigator.clipboard.writeText(j.link).then(() => toast('Link copiato')) }, 'Copia')));
+        }) }, 'Crea link di invito'),
+        h('button', { class: 'btn ghost small', onclick: () => guard(async () => mostra((await api('persone')).persone)) }, 'Aggiorna')),
+      linkBox);
+  };
+
   const needInfo = () => { if (!conn.info) throw new Error('Collega la scheda con il runtime installato'); };
   const netBox = h('p', { class: 'hint' });
   const codeIn = h('input', { placeholder: 'codice:chiave', autocapitalize: 'off', autocomplete: 'off' });
@@ -522,6 +560,7 @@ async function boardPage() {
         }) }, 'Disattiva'),
       ),
       notifBox(),
+      tgBox(),
       h('details', {},
         h('summary', {}, 'Usare un altro telefono o PC'),
         h('p', { class: 'hint' }, 'Copia il codice di accoppiamento qui sotto e incollalo nella PWA dell’altro dispositivo. Chi ha il codice può comandare la scheda: non condividerlo.'),

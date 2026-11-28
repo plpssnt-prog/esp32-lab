@@ -1043,6 +1043,67 @@ def d_fughe():
     filo(P['S', '14'], pp, VIOLA, 'r', 'd', 40, 60)
     filo(P['G', '14'], pm, BLK, 'r', 'd', 30, 70)
 
+def display_tm1637(x, y):
+    m = modulo(x, y, 150, 58, '', ['VCC', 'CLK', 'DIO', 'GND'], '#111827', step=16)
+    c.setFillColor(HexColor('#1f2937')); c.rect(x + 8, y + 14, 134, 40, stroke=0, fill=1)
+    c.setFont('SB', 30); c.setFillColor(HexColor('#ef4444')); c.drawCentredString(x + 75, y + 22, '12:34')
+    return m
+
+
+def pulsante_volante(x, y):
+    c.setFillColor(HexColor('#2b2b2b')); c.roundRect(x - 11, y - 11, 22, 22, 3, stroke=0, fill=1)
+    c.setFillColor(HexColor('#555555')); c.circle(x, y, 7, stroke=0, fill=1)
+    text(x, y + 16, 'ci sono', 6.5, 'SB', GREY, 'c')
+    c.setStrokeColor(HexColor('#9a9a9a')); c.setLineWidth(1.8)
+    c.line(x - 6, y - 11, x - 6, y - 22); c.line(x + 6, y - 11, x + 6, y - 22)
+    return (x - 6, y - 22), (x + 6, y - 22)
+
+
+@disegno
+def d_cucina():
+    P = breakout(BX, BY, usati=('42', '41', '40', '1', '21', '47', '3', '14'), alim=True)
+    # display e traslatore di livello
+    d = display_tm1637(150, 452)
+    t = modulo(205, 352, 120, 46, 'traslatore', ['HV', 'H1', 'H2', 'GND', 'LV', 'L1', 'L2'], '#334155', step=15)
+    filo(P['3V3'][2], t['LV'], RED, 'r', 'd', 40, 140)
+    filo(P['S', '42'], t['L1'], VIOLA, 'r', 'd', 40, 90)
+    filo(P['S', '41'], t['L2'], YEL, 'r', 'd', 50, 85)
+    filo(P['G', '42'], t['GND'], BLK, 'r', 'd', 60, 80)
+    filo(P['V', '41'], t['HV'], RED, 'r', 'd', 70, 100)
+    filo(t['H1'], d['CLK'], VIOLA, 'd', 'd', 20, 20, w=1.8)
+    filo(t['H2'], d['DIO'], YEL, 'd', 'd', 26, 26, w=1.8)
+    filo(t['HV'], d['VCC'], RED, 'd', 'd', 32, 32, w=1.8)
+    filo(t['GND'], d['GND'], BLK, 'd', 'd', 38, 38, w=1.8)
+    # sensori I2C in parallelo
+    b = modulo(345, 440, 58, 46, 'BME280', ['VIN', 'GND', 'SCL', 'SDA'], '#7c3aed', step=12)
+    m = modulo(420, 440, 70, 46, 'MLX90614', ['VIN', 'GND', 'SCL', 'SDA'], '#0f766e', step=12)
+    filo(P['3V3'][3], b['VIN'], RED, 'r', 'd', 90, 120)
+    filo(P['G', '20'], b['GND'], BLK, 'r', 'd', 110, 110)
+    filo(P['S', '47'], b['SCL'], GREEN, 'r', 'd', 120, 130)
+    filo(P['S', '21'], b['SDA'], BLUEW, 'r', 'd', 135, 125)
+    for k, col in (('VIN', RED), ('GND', BLK), ('SCL', GREEN), ('SDA', BLUEW)):
+        filo(b[k], m[k], col, 'd', 'd', 14, 14, w=1.8)
+    # PIR e pulsante
+    pi = pir(430, 330)
+    filo(P['V', '40'], pi['VCC'], RED, 'r', 'd', 120, 60)
+    filo(P['S', '40'], pi['OUT'], CYAN, 'r', 'd', 135, 55)
+    filo(P['G', '40'], pi['GND'], BLK, 'r', 'd', 150, 50)
+    p1, p2 = pulsante_volante(360, 320)
+    filo(P['S', '1'], p1, GREEN, 'r', 'd', 60, 40)
+    filo(P['G', '1'], p2, BLK, 'r', 'd', 70, 40)
+    # MQ-2 con partitore e buzzer a sinistra
+    q = mq2(15, 330)
+    filo(q['VCC'], P['V', '3'], RED, 'd', 'l', 50, 40)
+    filo(q['GND'], P['G', '3'], BLK, 'd', 'l', 40, 30)
+    wire_res(q['AO'], P['S', '3'], ORANGE, (q['AO'][0], 290), (P['S', '3'][0] - 50, P['S', '3'][1]), B1K)
+    t3, g = P['T', '3'], P['GNDb'][0]
+    wire_res(t3, g, BLK, (t3[0] - 8, t3[1] - 50), (g[0] - 8, g[1] + 60), B2K)
+    pp, pm = _buzzer_volante(P, 120, 300)
+    filo(P['S', '14'], pp, VIOLA, 'r', 'd', 40, 60)
+    filo(P['G', '14'], pm, BLK, 'r', 'd', 30, 70)
+    c.setStrokeColor(ORANGE); c.setLineWidth(2); c.circle(*P['CAM'], 16, stroke=1, fill=0)
+
+
 def disegna(pid, top, bottom, x0=40, width=515):
     """Disegna il progetto nel riquadro; True se esiste un disegno dedicato."""
     fn = D.get(pid)

@@ -45,9 +45,51 @@ async function sha256(s) {
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
+// ---- Telegram (allarmi ai familiari). Secret del Worker: TG_TOKEN = token del bot preso da @BotFather
+const tgApi = (env, metodo, corpo) => fetch(`https://api.telegram.org/bot${env.TG_TOKEN}/${metodo}`, corpo instanceof FormData
+  ? { method: 'POST', body: corpo }
+  : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo || {}) });
+const tgSegreto = async (env) => (await sha256('tg:' + env.TG_TOKEN)).slice(0, 32);
+const tgIndice = (env) => env.RELAY.get(env.RELAY.idFromName('__telegram__'));
+const interna = (stub, path, dati) => stub.fetch(new Request('https://interno' + path, { method: 'POST', body: JSON.stringify(dati) }));
+
+async function telegramWebhook(req, env) {
+  if (!env.TG_TOKEN || req.headers.get('x-telegram-bot-api-secret-token') !== await tgSegreto(env)) return new Response('no', { status: 403 });
+  const u = await req.json().catch(() => ({}));
+  const m = u.message;
+  if (!m || !m.chat || typeof m.text !== 'string') return new Response('ok');
+  const chat = m.chat.id;
+  const nome = [m.from && m.from.first_name, m.from && m.from.last_name].filter(Boolean).join(' ') || 'Telegram';
+  const rispondi = (text) => tgApi(env, 'sendMessage', { chat_id: chat, text });
+  const [cmd, arg] = m.text.trim().split(/\s+/, 2);
+  if (cmd === '/start' && arg && /^[0-9a-f]{8,64}-[0-9a-f]{16}$/.test(arg)) {
+    const [dev, codice] = arg.split('-');
+    const r = await (await interna(env.RELAY.get(env.RELAY.idFromName(dev)), '/tg/unisci', { codice, chat, nome })).json();
+    if (r.ok) await interna(tgIndice(env), '/tg/indice', { chat, dev });
+    await rispondi(r.ok ? `Ciao ${nome}! Da adesso ricevi qui gli allarmi della scheda «${r.scheda}».\n/foto  una foto adesso\n/stato  come va\n/stop  non ricevere più gli allarmi`
+      : 'Link di invito non valido o scaduto: chiedine uno nuovo.');
+    return new Response('ok');
+  }
+  const { dev } = await (await interna(tgIndice(env), '/tg/indice', { chat })).json();
+  if (!dev) { await rispondi('Per ricevere gli allarmi apri il link di invito che ti hanno mandato.'); return new Response('ok'); }
+  const stub = env.RELAY.get(env.RELAY.idFromName(dev));
+  if (cmd === '/stop') {
+    await interna(stub, '/tg/esci', { chat });
+    await interna(tgIndice(env), '/tg/indice', { chat, dev: null });
+    await rispondi('Fatto: non riceverai più gli allarmi. Per ricominciare riapri il link di invito.');
+  } else if (cmd === '/foto' || cmd === '/stato') {
+    const r = await (await interna(stub, '/tg/comando', { chat, cmd })).json();
+    if (r.text) await rispondi(r.text);
+  } else {
+    await rispondi('Comandi: /foto  una foto adesso · /stato  come va · /stop  non ricevere più gli allarmi');
+  }
+  return new Response('ok');
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (url.pathname === '/tg' && req.method === 'POST') return telegramWebhook(req, env);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
     const dev = url.searchParams.get('dev') || '';
     const key = url.searchParams.get('key') || '';
@@ -66,6 +108,7 @@ export class Relay extends DurableObject {
 
   async fetch(req) {
     const url = new URL(req.url);
+    if (url.hostname === 'interno') return this.interna(url.pathname, await req.json());
     const h = await sha256(url.searchParams.get('key') || '');
     let stored = await this.ctx.storage.get('key');
     if (!stored) { await this.ctx.storage.put('key', h); stored = h; }   // il primo collegamento registra la chiave
@@ -108,19 +151,105 @@ export class Relay extends DurableObject {
       return json(n);
     }
 
+    if (url.pathname === '/api/tg/invito' && req.method === 'POST') {
+      if (!this.env.TG_TOKEN) return json({ error: 'Telegram non configurato sul server (manca il secret TG_TOKEN)' }, 501);
+      const me = await (await tgApi(this.env, 'getMe')).json();
+      if (!me.ok) return json({ error: 'Token del bot non valido' }, 502);
+      const hook = url.origin + '/tg';
+      if ((await this.ctx.storage.get('tghook')) !== hook) {
+        const r = await (await tgApi(this.env, 'setWebhook', { url: hook, secret_token: await tgSegreto(this.env), allowed_updates: ['message'] })).json();
+        if (!r.ok) return json({ error: 'Telegram: ' + (r.description || 'webhook non impostato') }, 502);
+        await this.ctx.storage.put('tghook', hook);
+      }
+      const { nome } = await req.json().catch(() => ({}));
+      if (nome) await this.ctx.storage.put('nome', String(nome).slice(0, 40));
+      const codice = [...crypto.getRandomValues(new Uint8Array(8))].map((x) => x.toString(16).padStart(2, '0')).join('');
+      await this.ctx.storage.put('tginvito', { codice, scade: Date.now() + 7 * 86400000 });
+      return json({ link: `https://t.me/${me.result.username}?start=${url.searchParams.get('dev')}-${codice}`, bot: me.result.username, persone: await this.tgChats() });
+    }
+    if (url.pathname === '/api/tg/persone') return json({ configurato: !!this.env.TG_TOKEN, persone: await this.tgChats() });
+    if (url.pathname === '/api/tg/rimuovi' && req.method === 'POST') {
+      const { chat } = await req.json().catch(() => ({}));
+      await this.ctx.storage.put('tgchats', (await this.tgChats()).filter((p) => p.chat !== chat));
+      await tgApi(this.env, 'sendMessage', { chat_id: chat, text: 'Non riceverai più gli allarmi di questa scheda.' }).catch(() => {});
+      return json({ persone: await this.tgChats() });
+    }
+
     if (url.pathname === '/api/stato') return json({ board: this.boards().length > 0, apps: this.ctx.getWebSockets('app').length });
     return json({ error: 'non trovato' }, 404);
   }
 
+  async tgChats() { return (await this.ctx.storage.get('tgchats')) || []; }
+
+  // richieste interne: dal webhook di Telegram (mai da Internet direttamente)
+  async interna(path, d) {
+    if (path === '/tg/indice') {           // solo nell'oggetto «__telegram__»: chat -> scheda
+      if ('dev' in d) { if (d.dev) await this.ctx.storage.put('c' + d.chat, d.dev); else await this.ctx.storage.delete('c' + d.chat); return json({ ok: true }); }
+      return json({ dev: (await this.ctx.storage.get('c' + d.chat)) || null });
+    }
+    if (path === '/tg/unisci') {
+      const inv = await this.ctx.storage.get('tginvito');
+      if (!inv || inv.codice !== d.codice || inv.scade < Date.now()) return json({ ok: false });
+      const persone = (await this.tgChats()).filter((p) => p.chat !== d.chat);
+      persone.push({ chat: d.chat, nome: String(d.nome).slice(0, 60) });
+      await this.ctx.storage.put('tgchats', persone.slice(-10));
+      return json({ ok: true, scheda: (await this.ctx.storage.get('nome')) || 'ESP32 Lab' });
+    }
+    if (path === '/tg/esci') {
+      await this.ctx.storage.put('tgchats', (await this.tgChats()).filter((p) => p.chat !== d.chat));
+      return json({ ok: true });
+    }
+    if (path === '/tg/comando') {
+      if (!(await this.tgChats()).some((p) => p.chat === d.chat)) return json({ text: 'Non sei più nell’elenco: chiedi un nuovo invito.' });
+      const online = this.boards().length > 0;
+      if (d.cmd === '/stato') {
+        const r = await this.ctx.storage.get('riepilogo');
+        return json({ text: (online ? 'Scheda collegata.' : 'ATTENZIONE: la scheda non è collegata a Internet.') + (r ? '\n' + r : '') });
+      }
+      if (!online) return json({ text: 'La scheda non è collegata a Internet: niente foto adesso.' });
+      await this.ctx.storage.put('tgfoto', { chats: [d.chat], caption: 'Foto di adesso', ts: Date.now() });
+      for (const b of this.boards()) { try { b.send('{"t":"c","c":"foto","v":1}'); } catch (e) { /* */ } }
+      return json({ text: 'Scatto la foto…' });
+    }
+    return json({ error: 'non trovato' }, 404);
+  }
+
+  // manda testo (e se c'e' la foto) a tutte le persone collegate su Telegram
+  async telegram(title, body, foto) {
+    if (!this.env.TG_TOKEN) return 0;
+    const persone = await this.tgChats();
+    for (const p of persone) await tgApi(this.env, 'sendMessage', { chat_id: p.chat, text: '⚠️ ' + title + (body ? '\n' + body : '') }).catch(() => {});
+    if (foto && persone.length) {
+      const ts = (await this.ctx.storage.get('imgts')) || 0;
+      const att = { chats: persone.map((p) => p.chat), caption: title, ts: Date.now() };
+      if (Date.now() - ts < 20000) await this.tgFoto(att);          // la foto e' gia' arrivata
+      else await this.ctx.storage.put('tgfoto', att);              // la mando appena arriva
+    }
+    return persone.length;
+  }
+
+  async tgFoto(att) {
+    const img = await this.ctx.storage.get('img');
+    if (!img) return;
+    for (const chat of att.chats) {
+      const f = new FormData();
+      f.append('chat_id', String(chat));
+      f.append('caption', att.caption);
+      f.append('photo', new Blob([img], { type: 'image/jpeg' }), 'cucina.jpg');
+      await tgApi(this.env, 'sendPhoto', f).catch(() => {});
+    }
+  }
+
   // invia una notifica a tutti i telefoni registrati per questa scheda (al massimo una ogni 15 s)
-  async notifica(title, body, forza = false) {
-    const sa = fcmSA(this.env);
-    if (!sa) return { error: 'Notifiche non configurate sul server (manca FCM_SA)' };
+  async notifica(title, body, forza = false, foto = false) {
     const now = Date.now();
     if (!forza && now - (this.ultimaNotifica || 0) < 15000) return { saltata: true };
     this.ultimaNotifica = now;
+    const tg = await this.telegram(title, body, foto);
+    const sa = fcmSA(this.env);
+    if (!sa) return tg ? { telegram: tg } : { error: 'Notifiche non configurate sul server (manca FCM_SA)' };
     const tokens = (await this.ctx.storage.get('tokens')) || [];
-    if (!tokens.length) return { error: 'Nessun telefono registrato: premi «Attiva notifiche» nell’app' };
+    if (!tokens.length) return tg ? { telegram: tg } : { error: 'Nessun telefono registrato: premi «Attiva notifiche» nell’app' };
     let access;
     try { access = await fcmAccessToken(sa); } catch (e) { return { error: e.message }; }
     const validi = [];
@@ -136,7 +265,7 @@ export class Relay extends DurableObject {
       if (!(r.status === 404 || /UNREGISTERED|registration-token-not-registered/.test(t))) validi.push(token);
     }
     if (validi.length !== tokens.length) await this.ctx.storage.put('tokens', validi);
-    return { inviate, telefoni: validi.length };
+    return { inviate, telefoni: validi.length, telegram: tg };
   }
 
   boards() {
@@ -155,14 +284,20 @@ export class Relay extends DurableObject {
         const ts = Date.now();
         await this.ctx.storage.put({ img: msg, imgts: ts });
         this.toApps(JSON.stringify({ t: 'img', ts }));
+        const att = await this.ctx.storage.get('tgfoto');
+        if (att) {
+          await this.ctx.storage.delete('tgfoto');
+          if (ts - att.ts < 30000) await this.tgFoto(att);
+        }
         return;
       }
       this.toApps(msg);
-      if (msg.includes('notify')) {
+      if (msg.includes('notify') || msg.includes('"riepilogo"')) {
         for (const riga of msg.split('\n')) {
           try {
             const m = JSON.parse(riga);
-            if (m.t === 'notify') await this.notifica(String(m.title || 'ESP32 Lab').slice(0, 80), String(m.body || '').slice(0, 300));
+            if (m.t === 'notify') await this.notifica(String(m.title || 'ESP32 Lab').slice(0, 80), String(m.body || '').slice(0, 300), false, !!m.foto);
+            else if (m.t === 'k' && m.k === 'riepilogo') await this.ctx.storage.put('riepilogo', String(m.v).slice(0, 500));
           } catch (e) { /* riga non JSON */ }
         }
       }

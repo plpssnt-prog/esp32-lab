@@ -169,3 +169,5 @@ details.passo[open]{padding-bottom:12px}
 h2.sez{font-size:1rem;color:var(--muted);margin:22px 4px 4px}
 .notif{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
 .notif h3{font-size:1rem;margin:.6rem 0 .2rem}
+.tg-lista{padding-left:1.1rem;margin:.4rem 0}.tg-lista li{margin:.3rem 0}
+.notif input[readonly]{width:100%;margin:.3rem 0}
